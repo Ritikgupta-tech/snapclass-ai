@@ -104,3 +104,26 @@ class TestSecurityAndAuth:
 
         # Clean up
         _clear_failed_attempts("brand_new_user", attacker_ip)
+
+    def test_missing_credentials_handled_gracefully(self):
+        # Empty or whitespace usernames
+        success, msg, data = login_teacher("", "")
+        assert success is False
+        assert "required" in msg.lower()
+
+        success, msg, data = login_teacher("   ", "password")
+        assert success is False
+        assert "required" in msg.lower()
+
+    def test_cross_subject_unauthorized_teacher_injection(self):
+        from src.services.attendance_service import confirm_and_save_attendance
+        with patch("src.services.attendance_service.check_teacher_owns_subject") as mock_owns:
+            mock_owns.return_value = False
+            success, msg = confirm_and_save_attendance(
+                teacher_id=999,  # attacker teacher ID
+                session_id="unauth_sess_1",
+                subject_id=42,    # victim's subject
+                final_attendance_records=[{"student_id": 1, "is_present": True}]
+            )
+            assert success is False
+            assert "unauthorized" in msg.lower()

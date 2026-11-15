@@ -1,7 +1,7 @@
 # SNAPCLASS AI — System Architecture Specification
 
-**Document Version**: 2.2.0  
-**Target Environment**: Streamlit SaaS (Option B) / Python 3.11-3.14 / Supabase PostgreSQL 15  
+**Document Version**: 2.3.0  
+**Target Environment**: Streamlit SaaS (Option B) / Python 3.12 LTS Docker & Python 3.14 / Supabase PostgreSQL 15  
 **Architectural Decision**: Retain and upgrade Streamlit architecture with modular service, validation, and pipeline layers.
 
 ---
@@ -31,7 +31,7 @@ graph TB
         Validators[src/validators/ - Image, Audio, Input]
     end
 
-    subgraph DataLayer [Data Persistence & Storage Layer]
+    subgraph DataLayer [Data Persistence & Configuration Layer]
         DBAccess[src/database/db.py]
         Config[src/database/config.py]
         Supabase[(Supabase PostgreSQL 15)]
@@ -63,21 +63,39 @@ graph TB
 
 ---
 
-## 2. Layer Responsibilities & Module Directory Structure
+## 2. Docker & Containerization Architecture
+
+SNAPCLASS AI includes a multi-platform, production-ready `Dockerfile` targeting **Python 3.12 LTS on Debian Bookworm Slim**:
+
+- **Base Image**: `python:3.12-slim-bookworm`
+- **System Dependencies**: `build-essential`, `cmake`, `git`, `curl`, `libopenblas-dev`, `liblapack-dev`, `libx11-dev`, `libgtk-3-dev`, `libsndfile1`, `ffmpeg`.
+- **Security**: Runs under an unprivileged non-root user (`appuser`, UID 1001).
+- **Health Monitoring**: Integrated `HEALTHCHECK` querying Streamlit core probe:
+  ```dockerfile
+  HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+      CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+  ```
+- **Configuration Flexibility**: `src/database/config.py` resolves credentials first from standard OS environment variables (`SUPABASE_URL`, `SUPABASE_KEY`, `SNAPCLASS_ENV`) and falls back to `.streamlit/secrets.toml`.
+
+---
+
+## 3. Layer Responsibilities & Module Directory Structure
 
 ```text
 SNAPCLASS/
+├── Dockerfile                       # Multi-platform Python 3.12 container specification
+├── .dockerignore                    # Excludes secrets, git history, and caches
 ├── app.py                           # Application entrypoint & query-param router
 ├── requirements.txt                 # Pinned dependencies
 ├── .streamlit/
 │   ├── config.toml                  # Premium dark/light palette theme configuration
-│   └── secrets.toml.example         # Template for Supabase credentials
+│   └── secrets.toml.example         # Template for Supabase credentials & environment flags
 ├── docs/                            # Architectural, security, migration & QA documentation
 ├── src/
 │   ├── config/
 │   │   └── app_config.py            # Global thresholds, durations, limits, and URLs
 │   ├── database/
-│   │   ├── config.py                # Supabase client instantiation
+│   │   ├── config.py                # Dual environment variable / secrets credential resolver
 │   │   └── db.py                    # Data access layer, safe queries & password hashing
 │   ├── services/
 │   │   ├── auth_service.py          # Authentication, password rules & composite rate limiting
@@ -100,38 +118,9 @@ SNAPCLASS/
 │   │   └── dialog_*.py              # Modal dialogs for creation, photos, voice & review
 │   └── ui/
 │       └── base_layout.py           # Typography, container width rules & transition styles
-└── tests/                           # 61-test automated test suite
+└── tests/                           # 65-test automated test suite
     ├── unit/                        # Face, voice, auth, security & validator tests
     ├── integration/                 # Attendance and subject service integration tests
+    │   └── test_real_db_workflow.py # Explicit real DB tests (skipped without staging env)
     └── workflows/                   # Full 14-step E2E lifecycle and regression tests
 ```
-
----
-
-## 3. Core Architectural Lifecycles
-
-### 3.1 Teacher Multi-Modal Attendance Flow
-1. **Selection**: Instructor selects subject in `teacher_screen.py`.
-2. **Biometric Input**:
-   - Photo: Teacher uploads or captures classroom photos (`add_photos_dialog.py`).
-   - Voice: Teacher records classroom roll-call audio (`dialog_voice_attendance.py`).
-3. **Draft Preparation**:
-   - `prepare_face_attendance_session` / `prepare_voice_attendance_session` queries only the enrolled roster from `subject_students`.
-   - Embeddings are matched against enrolled student candidate vectors.
-   - If 0 faces or 0 recognized speakers are found, processing halts with an informative error.
-   - Ambiguous or close candidate matches are marked `NEEDS_REVIEW`.
-4. **Interactive Review**:
-   - An interactive review data table is rendered in `dialog_attendance_results.py`.
-   - Teacher inspects AI confidence scores and can override statuses.
-5. **Atomic Confirmation**:
-   - `confirm_and_save_attendance` acquires `_CONFIRM_LOCK` in memory.
-   - Checks `check_attendance_session_exists` against Supabase.
-   - Validates teacher ownership and deduplicates payload records by `student_id`.
-   - Inserts records into `attendance_logs` and releases lock.
-
-### 3.2 Student FaceID Authentication Flow
-1. Student opens FaceID login on `student_screen.py` via webcam snapshot.
-2. `get_face_embeddings` extracts 128-d metric vector.
-3. Vector is compared against enrolled students using `match_face_to_candidates`.
-4. Authentication strictly requires `HIGH_CONFIDENCE` ($\le 0.55$).
-5. On success, `login_student_by_id` initializes session state, stripping biometric embeddings.

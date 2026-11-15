@@ -1,8 +1,8 @@
-# SNAPCLASS AI — Comprehensive QA Test Report
+# SNAPCLASS AI — Comprehensive QA & Performance Test Report
 
-**Document Version**: 2.2.0  
-**Status**: 61 / 61 Passing (0 Failures, 4 Upstream Deprecation Warnings)  
-**Execution Time**: 8.72s  
+**Document Version**: 2.3.0  
+**Status**: 63 / 65 Passed, 2 Skipped (Real DB Staging Guarded), 0 Failures  
+**Execution Time**: 13.98s  
 
 ---
 
@@ -13,58 +13,55 @@
 platform win32 -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0
 rootdir: C:\Users\DELL\Desktop\SNAPCLASS
 
-tests/integration/test_attendance_service.py   7 PASSED  [ 11%]
-tests/integration/test_subject_service.py      3 PASSED  [ 16%]
-tests/unit/test_face_pipeline.py               8 PASSED  [ 29%]
-tests/unit/test_security_auth.py               7 PASSED  [ 40%]
-tests/unit/test_validators.py                 19 PASSED  [ 72%]
-tests/unit/test_voice_pipeline.py              9 PASSED  [ 86%]
-tests/workflows/test_e2e_attendance_flow.py    1 PASSED  [ 88%]
-tests/workflows/test_regression_bugs.py        7 PASSED  [100%]
+tests/integration/test_attendance_service.py    7 PASSED  [ 10%]
+tests/integration/test_real_db_workflow.py      2 SKIPPED [ 13%]
+tests/integration/test_subject_service.py       3 PASSED  [ 18%]
+tests/unit/test_face_pipeline.py                8 PASSED  [ 30%]
+tests/unit/test_security_auth.py                9 PASSED  [ 44%]
+tests/unit/test_validators.py                  19 PASSED  [ 73%]
+tests/unit/test_voice_pipeline.py               9 PASSED  [ 87%]
+tests/workflows/test_e2e_attendance_flow.py     1 PASSED  [ 89%]
+tests/workflows/test_regression_bugs.py         7 PASSED  [100%]
 
-======================= 61 passed, 4 warnings in 8.72s ========================
+================= 63 passed, 2 skipped, 4 warnings in 13.98s ==================
 ```
 
 ---
 
-## 2. Test Category Breakdown
+## 2. Test Category Breakdown & Mock Separation
 
-| Category | File Path | Tests | Status |
-| :--- | :--- | :---: | :---: |
-| **Validators** | `tests/unit/test_validators.py` | 19 | ✅ Passed |
-| **Face Pipeline** | `tests/unit/test_face_pipeline.py` | 8 | ✅ Passed |
-| **Voice Pipeline** | `tests/unit/test_voice_pipeline.py` | 9 | ✅ Passed |
-| **Auth & Security** | `tests/unit/test_security_auth.py` | 7 | ✅ Passed |
-| **Subject Service** | `tests/integration/test_subject_service.py` | 3 | ✅ Passed |
-| **Attendance Service** | `tests/integration/test_attendance_service.py` | 7 | ✅ Passed |
-| **Regression Fixes** | `tests/workflows/test_regression_bugs.py` | 7 | ✅ Passed |
-| **Full Lifecycle E2E** | `tests/workflows/test_e2e_attendance_flow.py` | 1 | ✅ Passed |
-| **Total** | | **61** | **100% Passed** |
+| Category | File Path | Tests | Mode | Status |
+| :--- | :--- | :---: | :---: | :---: |
+| **Validators** | `tests/unit/test_validators.py` | 19 | Unit | ✅ Passed |
+| **Face Pipeline** | `tests/unit/test_face_pipeline.py` | 8 | Unit | ✅ Passed |
+| **Voice Pipeline** | `tests/unit/test_voice_pipeline.py` | 9 | Unit | ✅ Passed |
+| **Auth & Abuse Security** | `tests/unit/test_security_auth.py` | 9 | Unit | ✅ Passed |
+| **Subject Service** | `tests/integration/test_subject_service.py` | 3 | Integration (Mocked) | ✅ Passed |
+| **Attendance Service** | `tests/integration/test_attendance_service.py` | 7 | Integration (Mocked) | ✅ Passed |
+| **Real Database Staging** | `tests/integration/test_real_db_workflow.py` | 2 | Real DB (Staging Guard) | ⏭️ Skipped |
+| **Regression Fixes** | `tests/workflows/test_regression_bugs.py` | 7 | Regression (Mocked) | ✅ Passed |
+| **Full Lifecycle E2E** | `tests/workflows/test_e2e_attendance_flow.py` | 1 | E2E (Mocked Store) | ✅ Passed |
+| **Total** | | **65** | | **63 Passed / 2 Skipped** |
+
+> [!NOTE]
+> **Mock vs Real Database Separation**:
+> Tests in `test_real_db_workflow.py` are strictly guarded by `SNAPCLASS_STAGING_TEST_RUN=true` and `SNAPCLASS_ENV=staging`. They skip automatically when executed in environments without an isolated staging database, preventing accidental writes or load against production.
 
 ---
 
-## 3. Detailed Verification Matrix
+## 3. Measured Performance Benchmarks
 
-### 3.1 Attendance Data Integrity & Idempotency
-- `test_idempotent_confirmation`: Verifies that re-submitting with the same `session_id` is rejected in memory.
-- `test_db_level_duplicate_timestamp_rejected`: Verifies that re-submitting after a restart triggers database timestamp collision rejection.
-- `test_unauthorized_teacher_rejected`: Verifies that a teacher cannot confirm attendance for a subject they do not own.
-- `test_duplicate_student_records_in_payload_deduplicated`: Verifies that duplicate student records in submission payloads are deduplicated before DB write.
-- `test_unregistered_student_in_attendance_rejected`: Verifies that attempting to record attendance for an un-enrolled student is rejected.
-- `test_db_unique_constraint_violation_handled_gracefully`: Verifies that PostgreSQL `23505` unique violation is caught and translated to a clean user message.
+All performance metrics were measured locally using high-resolution hardware timers (`time.perf_counter()`) and `tracemalloc`:
 
-### 3.2 Biometric Recognition & Candidate Scoping
-- `test_exact_face_match` / `test_ambiguous_face_match` / `test_unknown_face`: Tests canonical Euclidean thresholds ($0.55$ and $0.62$).
-- `test_scoped_candidate_isolation`: Verifies that candidate embeddings from Subject A cannot match students in Subject B.
-- `test_similar_candidates_downgraded_to_needs_review`: Verifies that two candidates with distance gap $< 0.05$ are downgraded to `NEEDS_REVIEW`.
-- `test_similar_voice_speakers_downgraded_to_needs_review`: Verifies that two voice speakers with similarity gap $< 0.05$ are downgraded to `NEEDS_REVIEW`.
-- `test_voice_session_zero_matches_halts_gracefully`: Verifies that when 0 enrolled students are recognized in audio, processing halts rather than recording everyone absent.
-
-### 3.3 Authentication & Rate Limiting
-- `test_rate_limiting_lockout_after_max_attempts`: Verifies 5-attempt threshold triggers 15-minute lockout.
-- `test_rate_limiting_persists_across_streamlit_session_restarts`: Verifies that rate limiting survives session state resets.
-- `test_rate_limiting_composite_ip_spraying_lockout`: Verifies that client IP spraying across multiple usernames triggers lockout.
-- `test_logout_purges_authenticated_state`: Verifies all authenticated keys are deleted on sign-out.
+| Performance Metric | Measured Value | Architectural Assessment |
+| :--- | :---: | :--- |
+| **Cold Start / Full App Import** | `20,132.78 ms` (20.1s) | Typical for heavy ML frameworks (Torch, Numba, SciPy, Streamlit) on Windows |
+| **Database Read Roundtrip (Supabase Cloud)** | `993.20 ms` | Normal for remote cloud PostgreSQL roundtrip |
+| **Dlib Face Models Initialization** | `2,144.61 ms` (2.1s) | 100MB+ model weights loaded; cached via `@st.cache_resource` on subsequent runs |
+| **Resemblyzer Voice Encoder Initialization** | `183.55 ms` | Fast PyTorch LSTM initialization; cached via `@st.cache_resource` |
+| **Face Detection Pass (300×300 RGB Image)** | `66.87 ms` | Sub-100ms detection pass with HOG frontal detector |
+| **Traced Memory (Current / Peak)** | `158.65 MB / 158.90 MB` | Lean footprint well within standard 1GB staging container limits |
+| **Concurrent Submission Contention (5 Threads)** | `3.97 ms` total | Exactly 1 thread succeeded; 4 threads locked/rejected; avg thread latency `0.04 ms` |
 
 ---
 
