@@ -7,8 +7,6 @@ from typing import Dict, Tuple, Optional, Any, List
 import io
 import logging
 import numpy as np
-import librosa
-from resemblyzer import VoiceEncoder, preprocess_wav
 import streamlit as st
 
 from src.config.app_config import (
@@ -22,11 +20,13 @@ from src.validators.audio_validators import validate_audio_payload
 logger = logging.getLogger(__name__)
 
 @st.cache_resource
-def load_voice_encoder() -> VoiceEncoder:
+def load_voice_encoder() -> Any:
     """
     Load pre-trained Resemblyzer voice encoder model.
     Cached at process level to avoid disk re-reads.
+    Resemblyzer is imported lazily on first call to keep startup times instantaneous.
     """
+    from resemblyzer import VoiceEncoder
     return VoiceEncoder()
 
 def get_voice_embedding(audio_bytes: bytes) -> Optional[List[float]]:
@@ -40,6 +40,9 @@ def get_voice_embedding(audio_bytes: bytes) -> Optional[List[float]]:
         return None
 
     try:
+        import librosa
+        from resemblyzer import preprocess_wav
+
         encoder = load_voice_encoder()
         with io.BytesIO(audio_bytes) as bio:
             audio, sr = librosa.load(bio, sr=VOICE_SAMPLE_RATE)
@@ -136,6 +139,9 @@ def process_bulk_audio(
         return {"matches": {}, "segments_processed": 0, "error": err_msg}
 
     try:
+        import librosa
+        from resemblyzer import preprocess_wav
+
         encoder = load_voice_encoder()
         with io.BytesIO(audio_bytes) as bio:
             audio, sr = librosa.load(bio, sr=VOICE_SAMPLE_RATE)

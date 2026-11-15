@@ -34,6 +34,8 @@ def enroll_dialog():
             else:
                 success, msg, sub = enroll_student_by_code(student_id, join_code)
                 if success:
+                    st.session_state.pop("_cached_student_dashboard", None)
+                    st.session_state.pop("_cached_teacher_subjects", None)
                     st.success(msg)
                     time.sleep(1)
                     st.rerun()

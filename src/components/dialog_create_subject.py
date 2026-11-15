@@ -24,6 +24,7 @@ def create_subject_dialog(teacher_id: int):
         if st.button("Create Subject", type="primary", width="stretch", key="dlg_create_sub_submit"):
             success, msg, subject_data = create_new_subject(teacher_id, sub_code, sub_name, sub_section)
             if success:
+                st.session_state.pop("_cached_teacher_subjects", None)
                 st.toast(msg, icon="✅")
                 st.session_state["subject_created_toast"] = msg
                 st.rerun()

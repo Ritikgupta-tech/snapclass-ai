@@ -215,7 +215,13 @@ def logout():
         "voice_attendance_results",
         "active_attendance_session",
         "current_teacher_tab",
-        "confirm_saving"
+        "confirm_saving",
+        "_cached_teacher_subjects",
+        "_cached_teacher_subjects_ts",
+        "_cached_teacher_attendance_history",
+        "_cached_teacher_attendance_history_ts",
+        "_cached_student_dashboard",
+        "_cached_student_dashboard_ts"
     ]
     for key in keys_to_clear:
         if key in st.session_state:

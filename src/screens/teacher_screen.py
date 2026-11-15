@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import time
 import io
 
 from src.ui.base_layout import style_base_layout
@@ -25,6 +26,46 @@ from src.services.attendance_service import (
     prepare_face_attendance_session,
     get_teacher_attendance_overview
 )
+
+# --- Session-Level Data Caching Helpers ---
+
+def get_cached_teacher_subjects(teacher_id: int, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    """
+    Session-cached teacher subjects query.
+    Avoids repeated 1-second Supabase roundtrips on every Streamlit rerun.
+    Auto-expires after 30 seconds or can be manually invalidated.
+    """
+    now = time.time()
+    cached = st.session_state.get("_cached_teacher_subjects")
+    last_fetch = st.session_state.get("_cached_teacher_subjects_ts", 0)
+
+    if force_refresh or cached is None or (now - last_fetch > 30):
+        cached = get_teacher_subjects(teacher_id)
+        st.session_state["_cached_teacher_subjects"] = cached
+        st.session_state["_cached_teacher_subjects_ts"] = now
+    return cached
+
+def get_cached_teacher_attendance_overview(teacher_id: int, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    """
+    Session-cached attendance overview query.
+    Auto-expires after 30 seconds or can be manually invalidated.
+    """
+    now = time.time()
+    cached = st.session_state.get("_cached_teacher_attendance_history")
+    last_fetch = st.session_state.get("_cached_teacher_attendance_history_ts", 0)
+
+    if force_refresh or cached is None or (now - last_fetch > 30):
+        cached = get_teacher_attendance_overview(teacher_id)
+        st.session_state["_cached_teacher_attendance_history"] = cached
+        st.session_state["_cached_teacher_attendance_history_ts"] = now
+    return cached
+
+def invalidate_teacher_cache():
+    """Invalidate session-cached teacher subjects and history."""
+    st.session_state.pop("_cached_teacher_subjects", None)
+    st.session_state.pop("_cached_teacher_subjects_ts", None)
+    st.session_state.pop("_cached_teacher_attendance_history", None)
+    st.session_state.pop("_cached_teacher_attendance_history_ts", None)
 
 def teacher_screen():
     style_base_layout()
@@ -122,17 +163,22 @@ def teacher_dashboard():
     teacher_id = teacher_data["teacher_id"]
 
     # Top Navigation Bar
-    c1, c2 = st.columns([3, 1], vertical_alignment="center")
+    c1, c2, c3 = st.columns([5, 2, 2], vertical_alignment="center")
     with c1:
         header_dashboard()
         st.caption(f"Signed in as **{teacher_data.get('name', 'Instructor')}** (`{teacher_data.get('username')}`)")
     with c2:
+        if st.button("Refresh", type="secondary", icon=":material/refresh:", width="stretch", key="teacher_refresh_data_btn"):
+            invalidate_teacher_cache()
+            st.rerun()
+    with c3:
         if st.button("Sign Out", type="secondary", icon=":material/logout:", width="stretch", key="teacher_signout_btn"):
+            invalidate_teacher_cache()
             logout()
             st.rerun()
 
-    # Overview Metrics Row
-    subjects = get_teacher_subjects(teacher_id)
+    # Overview Metrics Row (served from session cache)
+    subjects = get_cached_teacher_subjects(teacher_id)
     total_students = sum(s.get("total_students", 0) for s in subjects)
     total_classes = sum(s.get("total_classes", 0) for s in subjects)
 
@@ -304,7 +350,7 @@ def teacher_tab_attendance_records(teacher_id: int):
     st.subheader("Institutional Attendance Records")
     st.caption("Historical log of confirmed attendance sessions with detailed roster roll-ups.")
 
-    sessions = get_teacher_attendance_overview(teacher_id)
+    sessions = get_cached_teacher_attendance_overview(teacher_id)
 
     if not sessions:
         with st.container(border=True):

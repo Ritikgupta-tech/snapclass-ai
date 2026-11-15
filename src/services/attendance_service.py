@@ -4,6 +4,7 @@ Coordinates multi-modal facial and voice analysis, review structuring, and idemp
 """
 
 from typing import List, Dict, Any, Tuple, Optional
+import sys
 import uuid
 import threading
 from datetime import datetime
@@ -19,8 +20,26 @@ from src.database.db import (
 )
 from src.validators.image_validators import validate_and_prepare_image
 from src.validators.audio_validators import validate_audio_payload
-from src.pipelines.face_pipeline import analyze_classroom_photo
-from src.pipelines.voice_pipeline import process_bulk_audio
+
+# Lazy access to heavy ML pipelines to avoid multi-second startup overhead on page loads
+def _get_analyze_classroom_photo():
+    from src.pipelines.face_pipeline import analyze_classroom_photo
+    return analyze_classroom_photo
+
+def _get_process_bulk_audio():
+    from src.pipelines.voice_pipeline import process_bulk_audio
+    return process_bulk_audio
+
+def __getattr__(name):
+    if name == "analyze_classroom_photo":
+        fn = _get_analyze_classroom_photo()
+        globals()["analyze_classroom_photo"] = fn
+        return fn
+    if name == "process_bulk_audio":
+        fn = _get_process_bulk_audio()
+        globals()["process_bulk_audio"] = fn
+        return fn
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # In-memory session idempotency store and thread-safe mutex
 _CONFIRMED_SESSION_IDS = set()
@@ -64,7 +83,8 @@ def prepare_face_attendance_session(
         if not is_valid or np_img is None:
             continue
 
-        analysis = analyze_classroom_photo(np_img, candidates_with_emb)
+        analyzer = getattr(sys.modules[__name__], "analyze_classroom_photo")
+        analysis = analyzer(np_img, candidates_with_emb)
         total_unknown_faces += analysis["unknown_faces"]
         total_faces_found += analysis["total_faces"]
 
@@ -163,7 +183,8 @@ def prepare_voice_attendance_session(
     if not candidates_dict:
         return False, "None of the enrolled students have voice profiles registered.", None
 
-    bulk_result = process_bulk_audio(audio_bytes, candidates_dict)
+    bulk_processor = getattr(sys.modules[__name__], "process_bulk_audio")
+    bulk_result = bulk_processor(audio_bytes, candidates_dict)
     if bulk_result.get("error"):
         return False, bulk_result["error"], None
 

@@ -4,9 +4,7 @@ Uses dlib 128-dimensional deep metric embeddings with subject-scoped candidate m
 """
 
 from typing import List, Dict, Tuple, Any, Optional
-import dlib
 import numpy as np
-import face_recognition_models
 import streamlit as st
 import logging
 
@@ -23,7 +21,11 @@ def load_dlib_models():
     """
     Load pre-trained dlib face detector, shape predictor, and recognition network.
     Cached as a process-level resource to avoid reloading 100MB+ models on reruns.
+    Heavy dependencies (dlib, face_recognition_models) are imported lazily on first access.
     """
+    import dlib
+    import face_recognition_models
+
     detector = dlib.get_frontal_face_detector()
     sp = dlib.shape_predictor(
         face_recognition_models.pose_predictor_model_location()

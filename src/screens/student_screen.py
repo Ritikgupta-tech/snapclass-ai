@@ -33,7 +33,6 @@ from src.pipelines.face_pipeline import (
     get_face_embeddings,
     match_face_to_candidates
 )
-from src.pipelines.voice_pipeline import get_voice_embedding
 from src.validators.image_validators import validate_and_prepare_image
 
 def student_screen():
@@ -157,6 +156,7 @@ def student_login_and_register_view():
                                     # Process optional voice embedding
                                     voice_emb = None
                                     if audio_data:
+                                        from src.pipelines.voice_pipeline import get_voice_embedding
                                         audio_bytes = audio_data.getvalue() if hasattr(audio_data, "getvalue") else audio_data.read()
                                         voice_emb = get_voice_embedding(audio_bytes)
 
@@ -173,6 +173,29 @@ def student_login_and_register_view():
 
     footer_dashboard()
 
+# --- Session-Level Data Caching Helpers ---
+
+def get_cached_student_dashboard_data(student_id: int, force_refresh: bool = False):
+    """
+    Session-cached student enrolled subjects and attendance stats.
+    Avoids 2 remote Supabase network roundtrips on every rerun.
+    Auto-expires after 30 seconds or can be manually invalidated.
+    """
+    now = time.time()
+    cached = st.session_state.get("_cached_student_dashboard")
+    last_fetch = st.session_state.get("_cached_student_dashboard_ts", 0)
+
+    if force_refresh or cached is None or (now - last_fetch > 30):
+        cached = get_student_dashboard_data(student_id)
+        st.session_state["_cached_student_dashboard"] = cached
+        st.session_state["_cached_student_dashboard_ts"] = now
+    return cached
+
+def invalidate_student_cache():
+    """Invalidate session-cached student dashboard stats."""
+    st.session_state.pop("_cached_student_dashboard", None)
+    st.session_state.pop("_cached_student_dashboard_ts", None)
+
 # --- Authenticated Student Dashboard ---
 
 def student_dashboard():
@@ -180,18 +203,23 @@ def student_dashboard():
     student_id = student_data["student_id"]
     student_name = student_data.get("name", "Student")
 
-    # Header with sign out
-    c1, c2 = st.columns([3, 1], vertical_alignment="center")
+    # Header with refresh and sign out
+    c1, c2, c3 = st.columns([5, 2, 2], vertical_alignment="center")
     with c1:
         header_dashboard()
         st.caption(f"Student Portal • Welcome, **{student_name}** (`ID: #{student_id}`)")
     with c2:
+        if st.button("Refresh", type="secondary", icon=":material/refresh:", width="stretch", key="student_refresh_btn"):
+            invalidate_student_cache()
+            st.rerun()
+    with c3:
         if st.button("Sign Out", type="secondary", icon=":material/logout:", width="stretch", key="student_signout_btn"):
+            invalidate_student_cache()
             logout()
             st.rerun()
 
-    # Load Enrolled Subjects & Overall Attendance
-    subjects, summary = get_student_dashboard_data(student_id)
+    # Load Enrolled Subjects & Overall Attendance (served from session cache)
+    subjects, summary = get_cached_student_dashboard_data(student_id)
 
     # Overview Metrics Row
     m1, m2, m3, m4 = st.columns(4)
@@ -239,6 +267,7 @@ def student_dashboard():
                     if st.button("Unenroll from Course", type="tertiary", icon=":material/delete_forever:", width="stretch", key=f"unenroll_btn_{subject_id}"):
                         success, msg = unenroll_student_from_subject(student_id, subject_id)
                         if success:
+                            invalidate_student_cache()
                             st.toast(f"Unenrolled from {course_name}.", icon="👋")
                             st.rerun()
                         else:

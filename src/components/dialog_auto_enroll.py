@@ -62,6 +62,8 @@ def auto_enroll_dialog(subject_code: str):
         if st.button("Accept & Join Class", type="primary", width="stretch", key="auto_enroll_accept_btn"):
             success, msg, _ = enroll_student_by_code(student_id, clean_code)
             if success:
+                st.session_state.pop("_cached_student_dashboard", None)
+                st.session_state.pop("_cached_teacher_subjects", None)
                 st.success(f"Enrolled successfully in {subject['name']}!")
                 st.query_params.clear()
                 time.sleep(1.2)

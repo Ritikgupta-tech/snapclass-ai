@@ -101,6 +101,8 @@ def show_attendance_result(session_draft: Dict[str, Any]):
             st.session_state["is_saving_attendance"] = False
 
             if success:
+                st.session_state.pop("_cached_teacher_subjects", None)
+                st.session_state.pop("_cached_teacher_attendance_history", None)
                 st.toast(msg, icon="✅")
                 st.session_state.attendance_images = []
                 st.session_state.voice_attendance_results = None
