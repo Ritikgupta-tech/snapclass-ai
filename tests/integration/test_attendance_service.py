@@ -10,9 +10,11 @@ from src.services.attendance_service import (
 )
 
 class TestAttendanceService:
+    @patch("src.services.attendance_service.check_attendance_session_exists")
     @patch("src.services.attendance_service.check_teacher_owns_subject")
     @patch("src.services.attendance_service.db_create_attendance")
-    def test_idempotent_confirmation(self, mock_create, mock_owns):
+    def test_idempotent_confirmation(self, mock_create, mock_owns, mock_exists):
+        mock_exists.return_value = False
         mock_owns.return_value = True
         mock_create.return_value = [{"id": 1, "student_id": 10, "is_present": True}]
 
@@ -28,6 +30,19 @@ class TestAttendanceService:
         dup_success, dup_msg = confirm_and_save_attendance(teacher_id=1, session_id=session_id, subject_id=5, final_attendance_records=records)
         assert dup_success is False
         assert "already been saved" in dup_msg
+
+    @patch("src.services.attendance_service.check_attendance_session_exists")
+    @patch("src.services.attendance_service.check_teacher_owns_subject")
+    def test_db_level_duplicate_timestamp_rejected(self, mock_owns, mock_exists):
+        mock_owns.return_value = True
+        mock_exists.return_value = True  # session already in DB!
+
+        session_id = "new_sess_after_restart"
+        records = [{"student_id": 10, "subject_id": 5, "timestamp": "2026-11-15T10:00:00", "is_present": True}]
+
+        success, msg = confirm_and_save_attendance(teacher_id=1, session_id=session_id, subject_id=5, final_attendance_records=records)
+        assert success is False
+        assert "already been recorded in the database" in msg
 
     @patch("src.services.attendance_service.check_teacher_owns_subject")
     def test_unauthorized_teacher_rejected(self, mock_owns):

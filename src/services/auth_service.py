@@ -19,11 +19,14 @@ from src.validators.input_validators import (
 )
 from src.config.app_config import MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_SECONDS
 
+# Module-level persistent tracker across all Streamlit sessions in the process
+# Prevents bypassing lockout by restarting session or opening new tabs
+_GLOBAL_LOGIN_ATTEMPTS: Dict[str, Dict[str, Any]] = {}
+
 def _get_login_attempts() -> Dict[str, Dict[str, Any]]:
-    """Retrieve rate limiting attempt tracker from session state."""
-    if "login_attempts_tracker" not in st.session_state:
-        st.session_state.login_attempts_tracker = {}
-    return st.session_state.login_attempts_tracker
+    """Retrieve process-wide rate limiting attempt tracker."""
+    global _GLOBAL_LOGIN_ATTEMPTS
+    return _GLOBAL_LOGIN_ATTEMPTS
 
 def _is_rate_limited(username: str) -> Tuple[bool, int]:
     """Check if username is temporarily locked out due to excessive failed attempts."""

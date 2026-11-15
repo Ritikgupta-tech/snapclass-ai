@@ -1,6 +1,6 @@
 # SNAPCLASS AI — Architectural Specification
 
-**Document Version**: 2.0.0  
+**Document Version**: 2.1.0  
 **Status**: Production-Ready SaaS Architecture  
 **Primary Framework**: Streamlit (Option B — Architecture Retained & Upgraded)  
 **Database**: Supabase / PostgreSQL  
@@ -54,7 +54,7 @@ SNAPCLASS AI is an intelligent attendance management platform engineered for uni
 The application follows a clean 5-tier architecture:
 
 ### 2.1 Presentation Tier (`src/screens/`, `src/components/`, `src/ui/`)
-- **`app.py`**: Global router, page configuration (`layout="wide"`), query parameter listener (`join-code`), and session state baseline initializer.
+- **`app.py`**: Global router, wide layout configuration (`layout="wide"`), query parameter listener (`join-code`), and session state baseline initializer.
 - **`home_screen.py`**: Public landing page featuring brand identity, product workflow, feature highlights, and direct role-based entrypoints.
 - **`teacher_screen.py`**: Instructor portal with overview metrics, subject cards, photo gallery, real-time face analysis, and searchable attendance history.
 - **`student_screen.py`**: Student portal supporting FaceID camera authentication, profile registration, enrolled subjects view, and attendance log.
@@ -67,9 +67,9 @@ The application follows a clean 5-tier architecture:
 - **`image_validators.py`**: Validates image payloads, converts various color profiles to standardized RGB, and resizes oversized classroom photos (max 1920px) to prevent memory overload.
 
 ### 2.3 Service Tier (`src/services/`)
-- **`auth_service.py`**: Orchestrates instructor login/registration, password hashing via bcrypt, rate-limiting (5 attempts lockout), and clean session purging.
+- **`auth_service.py`**: Orchestrates instructor login/registration, password hashing via bcrypt, cross-session rate-limiting (5 attempts lockout), and clean session purging.
 - **`subject_service.py`**: Manages subject creation with duplicate code prevention, student enrollment/unenrollment, dashboard statistics aggregation, and QR code generation with canonical URL resolution.
-- **`attendance_service.py`**: Coordinates multi-image facial analysis and bulk audio recognition, structures editable review sessions, prevents duplicate submissions via session idempotency tokens, and formats attendance roll-ups.
+- **`attendance_service.py`**: Coordinates multi-image facial analysis and bulk audio recognition, structures editable review sessions, prevents duplicate submissions via dual-tier idempotency (atomic memory lock + database timestamp verification), and formats attendance roll-ups.
 
 ### 2.4 Biometric Pipeline Tier (`src/pipelines/`)
 - **`face_pipeline.py`**:
@@ -83,7 +83,7 @@ The application follows a clean 5-tier architecture:
 
 ### 2.5 Persistence Tier (`src/database/`)
 - **`config.py`**: Supabase client connection configured via `.streamlit/secrets.toml`.
-- **`db.py`**: Hardened database queries with explicit column selection, referential integrity checks, and sensitive field stripping.
+- **`db.py`**: Hardened database queries with explicit column selection, referential integrity checks, sensitive field stripping, and `check_attendance_session_exists`.
 
 ---
 
@@ -112,7 +112,7 @@ The application follows a clean 5-tier architecture:
 [Review Dialog] Teacher inspects editable roster, overrides statuses if needed
       │
       ▼
-[Attendance Service] Idempotent commit to Supabase with session ID lock
+[Attendance Service] Dual-tier idempotent commit (atomic lock + DB timestamp check)
 ```
 
 ### 3.2 Subject Joining via QR Code
@@ -142,3 +142,4 @@ The application follows a clean 5-tier architecture:
 2. **Subject-Scoped Biometric Queries**: Database queries for facial and vocal matching fetch *only* the students enrolled in the active subject, rather than the entire institutional database.
 3. **Selective Column Queries**: General profile lookups and dashboard renders omit heavy 128-float and 256-float arrays, saving megabytes of bandwidth per request.
 4. **Image Downsampling**: High-resolution 24MP–48MP smartphone photos are automatically scaled to max 1920px prior to face detection, reducing inference time from ~20s to <1.5s per image.
+5. **Multi-Layer Idempotency**: Concurrency-safe in-memory pre-locking combined with database-level session timestamp checks eliminates duplicate attendance log insertions.

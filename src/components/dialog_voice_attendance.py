@@ -32,7 +32,9 @@ def voice_attendance_dialog(selected_subject_id: int):
                     st.error(f"Could not read audio stream: {e}")
                     return
 
-                success, msg, session_payload = prepare_voice_attendance_session(selected_subject_id, audio_bytes)
+                teacher_data = st.session_state.get("teacher_data", {})
+                teacher_id = teacher_data.get("teacher_id")
+                success, msg, session_payload = prepare_voice_attendance_session(selected_subject_id, audio_bytes, teacher_id=teacher_id)
                 if success and session_payload:
                     st.session_state["voice_attendance_results"] = session_payload
                     st.rerun()

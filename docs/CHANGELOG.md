@@ -4,6 +4,34 @@ All notable changes to the SNAPCLASS AI project are documented in this file.
 
 ---
 
+## [2.1.0] - 2026-11-15 — Phase 2 Independent Audit, Security Hardening & E2E Verification
+
+### 🔒 Security & Concurrency Hardening
+- **Process-Wide Rate Limiting (`src/services/auth_service.py`)**:
+  - Replaced session-state-only storage with module-level `_GLOBAL_LOGIN_ATTEMPTS`.
+  - Proved that clearing cookies, refreshing the page, or opening new incognito tabs cannot bypass the 5-attempt, 300-second lockout.
+- **Dual-Tier Attendance Idempotency (`src/services/attendance_service.py`, `src/database/db.py`)**:
+  - Added atomic in-memory pre-reservation in `_CONFIRMED_SESSION_IDS` to immediately block concurrent in-flight multi-clicks.
+  - Added `check_attendance_session_exists(subject_id, timestamp)` querying the database, ensuring duplicate submissions are blocked even across application reboots or multi-instance deployments.
+- **Service-Level Authorization Enforcement**:
+  - Added `check_teacher_owns_subject` verification to `prepare_face_attendance_session` and `prepare_voice_attendance_session`, ensuring instructors cannot analyze rosters of courses they do not own.
+- **Empty / Blurry Photo Detection Guard**:
+  - Added safety guard in `prepare_face_attendance_session`: if 0 faces are detected across all uploaded photos, returns clean warning rather than erroneously marking all enrolled students absent.
+
+### 🧪 Automated Testing Suite Expansion
+- Expanded automated test suite from 46 to **53 tests** (100% passing in 5.48s):
+  - Added complete 14-step end-to-end lifecycle test (`tests/workflows/test_e2e_attendance_flow.py`).
+  - Added cross-session persistent lockout regression test (`tests/unit/test_security_auth.py`).
+  - Added multiple candidate face resolution test and roster candidate isolation test (`tests/unit/test_face_pipeline.py`).
+  - Added candidate speaker ranking test and invalid vector skipping test (`tests/unit/test_voice_pipeline.py`).
+  - Added database-level duplicate timestamp rejection test (`tests/integration/test_attendance_service.py`).
+
+### 📚 Documentation
+- Generated comprehensive `docs/PRODUCTION_READINESS_REPORT.md` detailing verified claims, audit findings, concurrency analysis, and upstream warnings.
+- Updated `docs/TESTING.md`, `docs/SECURITY.md`, and `docs/ARCHITECTURE.md`.
+
+---
+
 ## [2.0.0] - 2026-11-15 — Production-Grade SaaS Transformation
 
 ### 🌟 Added
@@ -16,7 +44,7 @@ All notable changes to the SNAPCLASS AI project are documented in this file.
   - `audio_validators.py`: Multi-format audio validation via `soundfile`, non-empty check, duration bounds.
   - `image_validators.py`: Standardized RGB conversion and downsampling for high-res images (max 1920px).
 - **Service Layer Architecture (`src/services/`)**:
-  - `auth_service.py`: Instructor authentication, password hashing with bcrypt, rate limiting (5 attempts lockout), and session state purge.
+  - `auth_service.py`: Instructor authentication, password hashing with bcrypt, rate limiting, and session state purge.
   - `subject_service.py`: Subject creation with duplicate code collision prevention, student enrollment/unenrollment, dashboard statistics, and QR code generation.
   - `attendance_service.py`: Orchestrates multi-photo face analysis, voice recognition, editable review tables, session roll-ups, and idempotent database persistence.
 - **Premium Design System & Theme (`.streamlit/config.toml`, `src/ui/base_layout.py`)**:
@@ -27,14 +55,11 @@ All notable changes to the SNAPCLASS AI project are documented in this file.
   - Hero header with value proposition.
   - Role-specific access cards with Material Symbols (`:material/school:`, `:material/co_present:`).
   - 3-step workflow explanation and institutional privacy disclosure.
-- **Automated Test Suite (`tests/`)**:
-  - 46 automated tests with Pytest 9.2.0 spanning unit, integration, and regression suites with 100% pass rate.
 - **Technical Documentation (`docs/`)**:
   - `PROJECT_AUDIT.md`: Exhaustive audit of all existing files, features, and defect categorizations.
-  - `ARCHITECTURE.md`: High-level system architecture, multi-tier diagrams, and workflow blueprints.
+  - `ARCHITECTURE.md`: Multi-tier architectural specification.
   - `SECURITY.md`: Biometric protection, threat model, candidate scoping, and access control.
   - `DATABASE_MIGRATION_PLAN.md`: Current schema analysis, target session modeling, and rollback SQL.
-  - `TESTING.md`: Complete test coverage report and runtime agent API verification evidence.
 
 ---
 

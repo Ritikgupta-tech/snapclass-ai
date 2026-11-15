@@ -173,7 +173,7 @@ def teacher_dashboard():
 
     # Tab Content Routing
     if st.session_state["current_teacher_tab"] == "take_attendance":
-        teacher_tab_take_attendance(subjects)
+        teacher_tab_take_attendance(subjects, teacher_id)
     elif st.session_state["current_teacher_tab"] == "manage_subjects":
         teacher_tab_manage_subjects(subjects, teacher_id)
     elif st.session_state["current_teacher_tab"] == "attendance_records":
@@ -183,7 +183,7 @@ def teacher_dashboard():
 
 # --- Tab 1: Attendance Workspace ---
 
-def teacher_tab_take_attendance(subjects: List[Dict[str, Any]]):
+def teacher_tab_take_attendance(subjects: List[Dict[str, Any]], teacher_id: int):
     st.subheader("Classroom Attendance Workspace")
     st.caption("Capture photos or classroom audio to automatically recognize enrolled students and record presence.")
 
@@ -241,7 +241,7 @@ def teacher_tab_take_attendance(subjects: List[Dict[str, Any]]):
         with c_run:
             if st.button("Run Facial Recognition Analysis", type="primary", icon=":material/analytics:", width="stretch", key="run_face_analysis_btn"):
                 with st.spinner("Extracting facial embeddings and cross-referencing roster..."):
-                    success, msg, session_payload = prepare_face_attendance_session(selected_subject_id, images)
+                    success, msg, session_payload = prepare_face_attendance_session(selected_subject_id, images, teacher_id=teacher_id)
                     if success and session_payload:
                         st.session_state["active_attendance_session"] = session_payload
                         attendance_result_dialog(session_payload)

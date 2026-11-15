@@ -13,7 +13,8 @@ from src.database.db import (
     get_enrolled_students_for_subject,
     create_attendance as db_create_attendance,
     get_attendance_for_teacher as db_get_attendance_for_teacher,
-    check_teacher_owns_subject
+    check_teacher_owns_subject,
+    check_attendance_session_exists
 )
 from src.validators.image_validators import validate_and_prepare_image
 from src.validators.audio_validators import validate_audio_payload
@@ -25,12 +26,16 @@ _CONFIRMED_SESSION_IDS = set()
 
 def prepare_face_attendance_session(
     subject_id: int,
-    images: List[Image.Image]
+    images: List[Image.Image],
+    teacher_id: Optional[int] = None
 ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Process classroom photos and generate an editable attendance review draft.
     Returns: (is_success, message, session_draft)
     """
+    if teacher_id and not check_teacher_owns_subject(teacher_id, subject_id):
+        return False, "Unauthorized: You do not own this academic subject.", None
+
     if not images:
         return False, "No classroom photos provided. Please upload or capture at least one image.", None
 
@@ -74,6 +79,9 @@ def prepare_face_attendance_session(
                 if match_info["confidence_pct"] > student_detections[sid]["confidence_pct"]:
                     student_detections[sid]["confidence_pct"] = match_info["confidence_pct"]
                     student_detections[sid]["status"] = match_info["status"]
+
+    if total_faces_found == 0:
+        return False, "No faces detected in any uploaded image. Please ensure photos are clear, well-lit, and students face the camera.", None
 
     # 3. Assemble review table for ALL enrolled students
     review_rows = []
@@ -127,12 +135,16 @@ def prepare_face_attendance_session(
 
 def prepare_voice_attendance_session(
     subject_id: int,
-    audio_bytes: bytes
+    audio_bytes: bytes,
+    teacher_id: Optional[int] = None
 ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Process classroom audio and generate an editable attendance review draft.
     Does NOT mark all students absent if recognition fails.
     """
+    if teacher_id and not check_teacher_owns_subject(teacher_id, subject_id):
+        return False, "Unauthorized: You do not own this academic subject.", None
+
     is_valid, err_msg, duration = validate_audio_payload(audio_bytes)
     if not is_valid:
         return False, err_msg, None
@@ -218,20 +230,29 @@ def confirm_and_save_attendance(
     if not final_attendance_records:
         return False, "No attendance records to save."
 
+    # 1. Atomic in-memory lock to prevent race conditions & multi-clicks
     if session_id in _CONFIRMED_SESSION_IDS:
-        return False, "This attendance session has already been saved."
+        return False, "This attendance session has already been saved or is currently processing."
+    _CONFIRMED_SESSION_IDS.add(session_id)
 
-    # Validate teacher ownership of subject
+    # 2. Validate teacher ownership of subject
     if not check_teacher_owns_subject(teacher_id, subject_id):
+        _CONFIRMED_SESSION_IDS.discard(session_id)
         return False, "Unauthorized: You do not own this subject."
+
+    # 3. Database-level persistence check (survives app restarts)
+    timestamp = final_attendance_records[0].get("timestamp")
+    if timestamp and check_attendance_session_exists(subject_id, timestamp):
+        return False, "Attendance for this subject and session timestamp has already been recorded in the database."
 
     try:
         saved_logs = db_create_attendance(final_attendance_records)
         if saved_logs:
-            _CONFIRMED_SESSION_IDS.add(session_id)
             return True, f"Successfully confirmed attendance for {len(saved_logs)} students!"
+        _CONFIRMED_SESSION_IDS.discard(session_id)
         return False, "Database returned empty result during save."
     except Exception as e:
+        _CONFIRMED_SESSION_IDS.discard(session_id)
         return False, f"Failed to commit attendance: {str(e)}"
 
 def get_teacher_attendance_overview(teacher_id: int) -> List[Dict[str, Any]]:

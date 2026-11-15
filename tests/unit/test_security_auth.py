@@ -45,6 +45,26 @@ class TestSecurityAndAuth:
         limited, _ = _is_rate_limited(username)
         assert limited is False
 
+    def test_rate_limiting_persists_across_streamlit_session_restarts(self):
+        username = "persistent_attacker"
+        _clear_failed_attempts(username)
+
+        # Trigger lockout
+        for _ in range(5):
+            _record_failed_attempt(username)
+
+        assert _is_rate_limited(username)[0] is True
+
+        # Simulate clearing st.session_state (session restart or new incognito tab)
+        st.session_state.clear()
+
+        # Cooldown MUST still be enforced process-wide
+        is_limited, remaining = _is_rate_limited(username)
+        assert is_limited is True
+        assert remaining > 0
+
+        _clear_failed_attempts(username)
+
     def test_register_teacher_rejects_weak_passwords(self):
         success, msg = register_teacher("valid_user", "Teacher Name", "weak", "weak")
         assert success is False

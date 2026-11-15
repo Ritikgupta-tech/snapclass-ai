@@ -1,6 +1,6 @@
 # SNAPCLASS AI — Security Architecture & Data Protection Guide
 
-**Document Version**: 2.0.0  
+**Document Version**: 2.1.0  
 **Classification**: Application Security Specification  
 
 ---
@@ -15,11 +15,11 @@ SNAPCLASS AI handles educational records and biometric representations. This doc
 
 | Threat Category | Potential Attack Vector | Implemented Mitigation |
 |---|---|---|
-| **Credential Attacks** | Password guessing / brute-force on instructor login | Bcrypt hashing, strict password complexity (min 8 chars, mixed case, number), and automated rate-limiting lockout after 5 consecutive failed attempts. |
+| **Credential Attacks** | Password guessing / brute-force on instructor login | Bcrypt hashing, strict password complexity (min 8 chars, mixed case, number), and automated process-wide rate-limiting lockout after 5 consecutive failed attempts (persisting across session restarts). |
 | **Biometric Spoofing** | Presentation of 2D photographs or recorded audio to camera | Transparent limitation disclosure: 2D web camera capture lacks hardware IR/depth liveness. FaceID is paired with institutional instructor review. |
 | **Cross-Subject Leakage** | Students from unrelated classes being matched in a course | Strict roster scoping: AI pipelines match face and voice vectors **only** against students actively enrolled in the selected subject. |
 | **Data Exposure** | Leakage of password hashes or biometric arrays in UI state | Database queries explicitly exclude sensitive columns (`password`, `face_embedding`, `voice_embedding`) during standard user sessions. |
-| **Attendance Tampering** | Replay or duplicate submissions causing attendance inflation | Idempotency tokens per session (`session_id`) and backend teacher ownership verification prior to database commits. |
+| **Attendance Tampering** | Replay or duplicate submissions causing attendance inflation | Multi-layer idempotency: In-memory pre-lock + database-level timestamp existence verification + instructor ownership check. |
 
 ---
 
@@ -34,7 +34,7 @@ SNAPCLASS AI handles educational records and biometric representations. This doc
 
 ### 3.2 Candidate Matching Scoping
 - In previous versions, facial classification ran against all students globally across the entire database.
-- In version 2.0.0, candidate matching is strictly constrained to `get_enrolled_students_for_subject(subject_id, include_embeddings=True)`.
+- In version 2.0+, candidate matching is strictly constrained to `get_enrolled_students_for_subject(subject_id, include_embeddings=True)`.
 - If a subject has 25 enrolled students, the pipeline compares input encodings strictly against those 25 reference vectors. Unenrolled students or strangers are classified as `UNKNOWN` and surfaced in a dedicated alert.
 
 ### 3.3 Confidence Calibration & Manual Review
@@ -55,9 +55,10 @@ Instructor passwords must satisfy the following criteria:
 - At least one lowercase letter (`[a-z]`).
 - At least one digit (`[0-9]`).
 
-### 4.2 Rate Limiting
-- Failed login attempts are tracked per username.
+### 4.2 Cross-Session Persistent Rate Limiting
+- Failed login attempts are tracked per username in a process-wide tracker (`_GLOBAL_LOGIN_ATTEMPTS`).
 - If 5 consecutive failures occur within a 5-minute window, the account is locked for 300 seconds.
+- **Crucial Hardening**: Unlike session-state-only storage, opening a new incognito window, clearing cookies, or creating a new Streamlit session **cannot bypass the 300-second lockout**.
 - Lockout status and remaining cooldown seconds are presented to the user.
 
 ### 4.3 Safe Logout & State Purging
@@ -67,6 +68,7 @@ Instructor passwords must satisfy the following criteria:
 
 ## 5. Authorization & Database Access Scoping
 
-- Every attendance persistence call executes `check_teacher_owns_subject(teacher_id, subject_id)` before writing records.
-- Even if a client session is modified, records cannot be inserted into subjects belonging to another instructor.
-- Student profile endpoints restrict access to the authenticated student's enrolled courses and attendance logs.
+- **Service-Level Defense-in-Depth**: UI visibility is never treated as a security boundary.
+- Every attendance analysis endpoint (`prepare_face_attendance_session`, `prepare_voice_attendance_session`) and commit endpoint (`confirm_and_save_attendance`) executes `check_teacher_owns_subject(teacher_id, subject_id)` before reading enrolled biometric vectors or writing records.
+- Even if a client session is modified or a synthetic request is constructed, records cannot be inserted into subjects belonging to another instructor.
+- Student endpoints restrict access strictly to the authenticated student's enrolled courses and attendance logs.

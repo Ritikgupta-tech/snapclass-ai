@@ -74,3 +74,31 @@ class TestFacePipeline:
         sid, name, dist, status = match_face_to_candidates(query, bad_candidates)
         assert sid is None
         assert status == "UNKNOWN"
+
+    def test_multiple_candidates_picks_closest(self, mock_candidates):
+        # Create query very close to Bob (student 2)
+        query = np.zeros(128)
+        query[1] = 0.98
+        query[3] = 0.1
+        query = query / np.linalg.norm(query)
+
+        sid, name, dist, status = match_face_to_candidates(query, mock_candidates)
+        assert sid == 2
+        assert name == "Bob Jones"
+        assert status == "HIGH_CONFIDENCE"
+
+    def test_scoped_candidate_isolation(self):
+        # Candidate 5 is enrolled in Subject A, Candidate 9 is in Subject B
+        v_subj_a = np.zeros(128)
+        v_subj_a[5] = 1.0
+
+        v_subj_b = np.zeros(128)
+        v_subj_b[9] = 1.0
+
+        # Roster for Subject A only
+        roster_a = [{"student_id": 5, "name": "Student A", "face_embedding": v_subj_a.tolist()}]
+
+        # Query of Student B against Subject A roster must be UNKNOWN
+        sid, name, dist, status = match_face_to_candidates(v_subj_b, roster_a)
+        assert sid is None
+        assert status == "UNKNOWN"

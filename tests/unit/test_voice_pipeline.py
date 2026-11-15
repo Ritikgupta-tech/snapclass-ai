@@ -83,3 +83,36 @@ class TestVoicePipeline:
         result = process_bulk_audio(None, {1: [0.1]*256})
         assert result["matches"] == {}
         assert result["error"] is not None
+
+    def test_identify_speaker_skips_invalid_embeddings(self):
+        query = np.zeros(256)
+        query[0] = 1.0
+
+        candidates = {
+            1: None,
+            2: [0.1] * 10,  # invalid dimension (10 instead of 256)
+            3: "not_a_vector"
+        }
+        sid, score, status = identify_speaker(query, candidates)
+        assert sid is None
+        assert status == "UNKNOWN"
+
+    def test_identify_speaker_picks_best_match_among_candidates(self):
+        query = np.zeros(256)
+        query[0] = 1.0
+
+        # c1 has cosine similarity 0.60 with query
+        c1 = np.zeros(256)
+        c1[0] = 0.60
+        c1[1] = np.sqrt(1 - 0.60**2)
+
+        # c2 has cosine similarity 0.95 with query
+        c2 = np.zeros(256)
+        c2[0] = 0.95
+        c2[1] = np.sqrt(1 - 0.95**2)
+
+        candidates = {101: c1.tolist(), 102: c2.tolist()}
+        sid, score, status = identify_speaker(query, candidates)
+        assert sid == 102
+        assert status == "HIGH_CONFIDENCE"
+        assert score > 0.90

@@ -204,6 +204,13 @@ def get_enrolled_students_for_subject(subject_id: int, include_embeddings: bool 
 
 # --- Attendance Operations ---
 
+def check_attendance_session_exists(subject_id: int, timestamp: str) -> bool:
+    """Check if attendance records for this subject and timestamp already exist in database."""
+    if not subject_id or not timestamp:
+        return False
+    response = supabase.table("attendance_logs").select("id").eq("subject_id", subject_id).eq("timestamp", timestamp).limit(1).execute()
+    return bool(response.data and len(response.data) > 0)
+
 def create_attendance(logs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Insert attendance log records."""
     if not logs:
