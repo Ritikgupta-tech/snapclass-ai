@@ -1,102 +1,78 @@
-# SNAPCLASS AI — Automated Testing & Quality Assurance Report
+# SNAPCLASS AI — Comprehensive QA Test Report
 
-**Document Version**: 2.1.0  
-**Test Framework**: Pytest 9.2.0  
-**Total Test Count**: 53  
-**Passed**: 53 (100%)  
-**Failed**: 0  
-**Execution Runtime**: 5.48 seconds  
+**Document Version**: 2.2.0  
+**Status**: 61 / 61 Passing (0 Failures, 4 Upstream Deprecation Warnings)  
+**Execution Time**: 8.72s  
 
 ---
 
-## 1. Test Architecture & Coverage
+## 1. Test Execution Summary
 
-The automated test suite covers the complete application lifecycle, from low-level input sanitizers to multi-modal biometric metric distance scoring, security rate limiters, idempotent confirmation locks, and regression verifications for all identified P0/P1 defects.
+```text
+============================= test session starts =============================
+platform win32 -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0
+rootdir: C:\Users\DELL\Desktop\SNAPCLASS
 
-```
-tests/
-├── unit/
-│   ├── test_validators.py        # Input, password, audio & image bounds (15 tests)
-│   ├── test_face_pipeline.py     # 128-d Euclidean candidate distance & unknown faces (7 tests)
-│   ├── test_voice_pipeline.py    # Cosine similarity & speaker identification (8 tests)
-│   └── test_security_auth.py     # Bcrypt, rate-limiting lockout, logout state purge (6 tests)
-├── integration/
-│   ├── test_subject_service.py   # Subject creation, duplicate prevention, QR generation (3 tests)
-│   └── test_attendance_service.py# Idempotency token & session overview rollups (4 tests)
-└── workflows/
-    ├── test_e2e_attendance_flow.py # Complete 14-step end-to-end attendance lifecycle (1 test)
-    └── test_regression_bugs.py   # Regression coverage for verified P0/P1 defects (5 tests)
+tests/integration/test_attendance_service.py   7 PASSED  [ 11%]
+tests/integration/test_subject_service.py      3 PASSED  [ 16%]
+tests/unit/test_face_pipeline.py               8 PASSED  [ 29%]
+tests/unit/test_security_auth.py               7 PASSED  [ 40%]
+tests/unit/test_validators.py                 19 PASSED  [ 72%]
+tests/unit/test_voice_pipeline.py              9 PASSED  [ 86%]
+tests/workflows/test_e2e_attendance_flow.py    1 PASSED  [ 88%]
+tests/workflows/test_regression_bugs.py        7 PASSED  [100%]
+
+======================= 61 passed, 4 warnings in 8.72s ========================
 ```
 
 ---
 
-## 2. Test Execution Command & Summary
+## 2. Test Category Breakdown
 
-```bash
-.\venv\Scripts\python.exe -m pytest tests -v
-```
-
-### Verified Test Results
-
-| Test Module | Test Name | Target Behavior | Outcome |
-|---|---|---|---|
-| `test_validators.py` | `test_validate_username_valid` | Validates standard username formats | **PASSED** |
-| `test_validators.py` | `test_validate_username_invalid_chars` | Rejects special characters | **PASSED** |
-| `test_validators.py` | `test_validate_username_too_short` | Rejects length < 3 | **PASSED** |
-| `test_validators.py` | `test_validate_password_strong` | Validates complexity rules | **PASSED** |
-| `test_validators.py` | `test_validate_password_too_short` | Rejects passwords < 8 chars | **PASSED** |
-| `test_validators.py` | `test_validate_password_missing_number` | Rejects missing digit | **PASSED** |
-| `test_validators.py` | `test_validate_password_missing_uppercase` | Rejects missing uppercase | **PASSED** |
-| `test_validators.py` | `test_validate_subject_inputs_valid` | Validates subject code and title | **PASSED** |
-| `test_validators.py` | `test_empty_audio_payload` | Correctly flags 0-byte audio | **PASSED** |
-| `test_validators.py` | `test_none_audio_payload` | Handles unrecorded None stream | **PASSED** |
-| `test_validators.py` | `test_oversized_audio_payload` | Rejects audio exceeding 10MB | **PASSED** |
-| `test_validators.py` | `test_oversized_image_downscaled` | Scales down 3000px image to max 1920px | **PASSED** |
-| `test_face_pipeline.py` | `test_exact_face_match` | Verifies self-distance < 0.001 | **PASSED** |
-| `test_face_pipeline.py` | `test_ambiguous_face_match` | Flags 0.58 distance as NEEDS_REVIEW | **PASSED** |
-| `test_face_pipeline.py` | `test_unknown_face` | Distinguishes unknown faces | **PASSED** |
-| `test_face_pipeline.py` | `test_empty_candidates_returns_unknown` | Safe fallback when 0 candidates | **PASSED** |
-| `test_face_pipeline.py` | `test_corrupt_candidate_vector` | Skips malformed embedding vectors | **PASSED** |
-| `test_face_pipeline.py` | `test_multiple_candidates_picks_closest` | Selects exact closest candidate | **PASSED** |
-| `test_face_pipeline.py` | `test_scoped_candidate_isolation` | Proves candidate roster scoping | **PASSED** |
-| `test_voice_pipeline.py` | `test_cosine_similarity_properties` | Verifies normalization & bounds | **PASSED** |
-| `test_voice_pipeline.py` | `test_identify_speaker_high_confidence` | Matches speaker above 0.72 | **PASSED** |
-| `test_voice_pipeline.py` | `test_identify_speaker_ambiguous` | Flags marginal score as NEEDS_REVIEW | **PASSED** |
-| `test_voice_pipeline.py` | `test_identify_speaker_unknown` | Returns UNKNOWN when orthogonal | **PASSED** |
-| `test_voice_pipeline.py` | `test_process_bulk_audio_empty_bytes` | Returns clean error on empty bytes | **PASSED** |
-| `test_voice_pipeline.py` | `test_identify_speaker_skips_invalid` | Handles None and corrupt vectors | **PASSED** |
-| `test_voice_pipeline.py` | `test_identify_speaker_best_match` | Picks highest similarity candidate | **PASSED** |
-| `test_security_auth.py` | `test_bcrypt_hashing_and_verification` | Bcrypt salt & verification | **PASSED** |
-| `test_security_auth.py` | `test_rate_limiting_lockout` | Enforces 5-attempt lockout for 300s | **PASSED** |
-| `test_security_auth.py` | `test_rate_limiting_persists_across_restarts` | Proves cross-session lockout persistence | **PASSED** |
-| `test_security_auth.py` | `test_logout_purges_authenticated_state` | Purges all sensitive keys on logout | **PASSED** |
-| `test_subject_service.py` | `test_generate_qr_share_details` | Emits https:// scheme & QR bytes | **PASSED** |
-| `test_subject_service.py` | `test_create_new_subject_duplicate_code` | Blocks duplicate subject codes | **PASSED** |
-| `test_attendance_service.py`| `test_idempotent_confirmation` | Blocks duplicate session saves | **PASSED** |
-| `test_attendance_service.py`| `test_db_level_duplicate_timestamp` | Blocks duplicate timestamp in DB | **PASSED** |
-| `test_attendance_service.py`| `test_unauthorized_teacher_rejected` | Rejects saves for unowned subjects | **PASSED** |
-| `test_e2e_attendance_flow.py`| `test_complete_attendance_lifecycle` | Complete 14-step end-to-end flow | **PASSED** |
-| `test_regression_bugs.py` | `test_voice_attendance_none_audio` | Proves NoneType read fix | **PASSED** |
-| `test_regression_bugs.py` | `test_voice_failure_no_false_absent` | Proves no false absence logging | **PASSED** |
-| `test_regression_bugs.py` | `test_face_pipeline_single_student` | Proves 1-student roster safety | **PASSED** |
-| `test_regression_bugs.py` | `test_canonical_app_url_has_valid_scheme`| Proves proper URL resolution | **PASSED** |
-| `test_regression_bugs.py` | `test_subject_card_closure_safety` | Proves loop closure isolation | **PASSED** |
+| Category | File Path | Tests | Status |
+| :--- | :--- | :---: | :---: |
+| **Validators** | `tests/unit/test_validators.py` | 19 | ✅ Passed |
+| **Face Pipeline** | `tests/unit/test_face_pipeline.py` | 8 | ✅ Passed |
+| **Voice Pipeline** | `tests/unit/test_voice_pipeline.py` | 9 | ✅ Passed |
+| **Auth & Security** | `tests/unit/test_security_auth.py` | 7 | ✅ Passed |
+| **Subject Service** | `tests/integration/test_subject_service.py` | 3 | ✅ Passed |
+| **Attendance Service** | `tests/integration/test_attendance_service.py` | 7 | ✅ Passed |
+| **Regression Fixes** | `tests/workflows/test_regression_bugs.py` | 7 | ✅ Passed |
+| **Full Lifecycle E2E** | `tests/workflows/test_e2e_attendance_flow.py` | 1 | ✅ Passed |
+| **Total** | | **61** | **100% Passed** |
 
 ---
 
-## 3. Headless Streamlit Agent API Runtime Verification
+## 3. Detailed Verification Matrix
 
-Following the Streamlit development guidelines, the application was verified in the real runtime environment using Streamlit's Agent API (`--server.enableAgentApi=true` on port 8766):
+### 3.1 Attendance Data Integrity & Idempotency
+- `test_idempotent_confirmation`: Verifies that re-submitting with the same `session_id` is rejected in memory.
+- `test_db_level_duplicate_timestamp_rejected`: Verifies that re-submitting after a restart triggers database timestamp collision rejection.
+- `test_unauthorized_teacher_rejected`: Verifies that a teacher cannot confirm attendance for a subject they do not own.
+- `test_duplicate_student_records_in_payload_deduplicated`: Verifies that duplicate student records in submission payloads are deduplicated before DB write.
+- `test_unregistered_student_in_attendance_rejected`: Verifies that attempting to record attendance for an un-enrolled student is rejected.
+- `test_db_unique_constraint_violation_handled_gracefully`: Verifies that PostgreSQL `23505` unique violation is caught and translated to a clean user message.
 
-1. **Health Check**:
-   - `GET /_stcore/health` returned HTTP 200 `ok`.
-2. **Landing Page UI Tree**:
-   - `POST /_stcore/agent/interact` returned `"status": "ready"`, confirming clean rendering of hero headlines, portal action cards, and 3-step workflow elements.
-3. **Instructor Navigation Transition**:
-   - Triggered `landing_teacher_portal_btn`.
-   - App state re-rendered seamlessly to the Instructor Login form with action keys `['teacher_login_home_btn', 'teacher_login_username_input', 'teacher_login_password_input', 'teacher_do_login_btn', 'teacher_goto_register_btn']`.
-4. **Rate-Limiting & Error Alerting**:
-   - Sent invalid credentials.
-   - App returned status `"ready"` with inline warning alert `"Invalid username or password."` without crashing or throwing unhandled tracebacks.
-5. **Student Portal Transition**:
-   - Successfully routed back to home and navigated into the Student Portal with action keys `['student_login_home_btn', 'toggle_reg_form_btn']`.
+### 3.2 Biometric Recognition & Candidate Scoping
+- `test_exact_face_match` / `test_ambiguous_face_match` / `test_unknown_face`: Tests canonical Euclidean thresholds ($0.55$ and $0.62$).
+- `test_scoped_candidate_isolation`: Verifies that candidate embeddings from Subject A cannot match students in Subject B.
+- `test_similar_candidates_downgraded_to_needs_review`: Verifies that two candidates with distance gap $< 0.05$ are downgraded to `NEEDS_REVIEW`.
+- `test_similar_voice_speakers_downgraded_to_needs_review`: Verifies that two voice speakers with similarity gap $< 0.05$ are downgraded to `NEEDS_REVIEW`.
+- `test_voice_session_zero_matches_halts_gracefully`: Verifies that when 0 enrolled students are recognized in audio, processing halts rather than recording everyone absent.
+
+### 3.3 Authentication & Rate Limiting
+- `test_rate_limiting_lockout_after_max_attempts`: Verifies 5-attempt threshold triggers 15-minute lockout.
+- `test_rate_limiting_persists_across_streamlit_session_restarts`: Verifies that rate limiting survives session state resets.
+- `test_rate_limiting_composite_ip_spraying_lockout`: Verifies that client IP spraying across multiple usernames triggers lockout.
+- `test_logout_purges_authenticated_state`: Verifies all authenticated keys are deleted on sign-out.
+
+---
+
+## 4. UI Runtime Verification via Agent API
+
+The Streamlit web application was executed headlessly and validated using the Streamlit Agent API (`/_stcore/agent/interact`):
+- Navigation from landing page to Instructor portal.
+- Form field population for instructor authentication.
+- Rate-limiting error banner display upon intentional invalid attempts.
+- Navigation transition to Student FaceID sign-in portal.
+- All views render without duplicate widget key warnings or styling breakages.

@@ -72,3 +72,50 @@ class TestRegressionFixes:
         assert callbacks[0]() == "CS101"
         assert callbacks[1]() == "CS202"
         assert callbacks[2]() == "CS303"
+
+    def test_voice_session_zero_matches_halts_gracefully(self):
+        """Regression test: when audio contains speech but matches 0 enrolled students, do not draft false absences."""
+        from src.services.attendance_service import prepare_voice_attendance_session
+        import pandas as pd
+
+        with patch("src.services.attendance_service.check_teacher_owns_subject") as mock_owns, \
+             patch("src.services.attendance_service.validate_audio_payload") as mock_val, \
+             patch("src.services.attendance_service.get_enrolled_students_for_subject") as mock_enrolled, \
+             patch("src.services.attendance_service.process_bulk_audio") as mock_bulk:
+
+            mock_owns.return_value = True
+            mock_val.return_value = (True, "", 5.0)
+            mock_enrolled.return_value = [
+                {"student_id": 1, "name": "Alice", "voice_embedding": [0.1]*256}
+            ]
+            # Speech processed but 0 matches found (e.g. unknown guest speaker)
+            mock_bulk.return_value = {
+                "matches": {},
+                "segments_processed": 2,
+                "error": None
+            }
+
+            success, msg, payload = prepare_voice_attendance_session(
+                subject_id=10,
+                audio_bytes=b"dummy_wav_data",
+                teacher_id=1
+            )
+
+            assert success is False
+            assert "no enrolled students were recognized" in msg.lower()
+            assert payload is None
+
+    def test_csv_export_structure(self):
+        """Verify attendance roster DataFrame formats and exports to RFC 4180 CSV correctly."""
+        import pandas as pd
+        roster_data = [
+            {"Student ID": 101, "Name": "Alice Smith", "Status": "✅ Present"},
+            {"Student ID": 102, "Name": "Bob Jones", "Status": "❌ Absent"}
+        ]
+        df = pd.DataFrame(roster_data)
+        csv_bytes = df.to_csv(index=False).encode("utf-8")
+        csv_str = csv_bytes.decode("utf-8")
+
+        assert "Student ID,Name,Status" in csv_str
+        assert "101,Alice Smith,✅ Present" in csv_str
+        assert "102,Bob Jones,❌ Absent" in csv_str

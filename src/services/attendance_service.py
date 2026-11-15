@@ -5,6 +5,7 @@ Coordinates multi-modal facial and voice analysis, review structuring, and idemp
 
 from typing import List, Dict, Any, Tuple, Optional
 import uuid
+import threading
 from datetime import datetime
 import pandas as pd
 from PIL import Image
@@ -21,8 +22,9 @@ from src.validators.audio_validators import validate_audio_payload
 from src.pipelines.face_pipeline import analyze_classroom_photo
 from src.pipelines.voice_pipeline import process_bulk_audio
 
-# In-memory session idempotency store to prevent duplicate submissions
+# In-memory session idempotency store and thread-safe mutex
 _CONFIRMED_SESSION_IDS = set()
+_CONFIRM_LOCK = threading.Lock()
 
 def prepare_face_attendance_session(
     subject_id: int,
@@ -166,8 +168,8 @@ def prepare_voice_attendance_session(
         return False, bulk_result["error"], None
 
     matches = bulk_result.get("matches", {})
-    if not matches and bulk_result.get("segments_processed", 0) == 0:
-        return False, "No clear speech detected in recording. Please record again.", None
+    if not matches:
+        return False, "No enrolled students were recognized in this audio recording. Please review audio or record again to avoid recording false absences.", None
 
     session_id = uuid.uuid4().hex[:12]
     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
@@ -225,34 +227,70 @@ def confirm_and_save_attendance(
     final_attendance_records: List[Dict[str, Any]]
 ) -> Tuple[bool, str]:
     """
-    Idempotently save confirmed attendance records to Supabase.
+    Idempotently and atomically save confirmed attendance records to Supabase.
+    Enforces thread-safety, payload deduplication, roster verification, and database uniqueness.
     """
     if not final_attendance_records:
         return False, "No attendance records to save."
 
-    # 1. Atomic in-memory lock to prevent race conditions & multi-clicks
-    if session_id in _CONFIRMED_SESSION_IDS:
-        return False, "This attendance session has already been saved or is currently processing."
-    _CONFIRMED_SESSION_IDS.add(session_id)
+    # 1. Thread-safe atomic in-memory lock to prevent race conditions & double-clicks
+    with _CONFIRM_LOCK:
+        if session_id in _CONFIRMED_SESSION_IDS:
+            return False, "This attendance session has already been saved or is currently processing."
+        _CONFIRMED_SESSION_IDS.add(session_id)
 
-    # 2. Validate teacher ownership of subject
-    if not check_teacher_owns_subject(teacher_id, subject_id):
-        _CONFIRMED_SESSION_IDS.discard(session_id)
-        return False, "Unauthorized: You do not own this subject."
-
-    # 3. Database-level persistence check (survives app restarts)
-    timestamp = final_attendance_records[0].get("timestamp")
-    if timestamp and check_attendance_session_exists(subject_id, timestamp):
+    # 2. Database-level persistence check (survives app restarts)
+    ref_timestamp = final_attendance_records[0].get("timestamp")
+    if ref_timestamp and check_attendance_session_exists(subject_id, ref_timestamp):
+        with _CONFIRM_LOCK:
+            _CONFIRMED_SESSION_IDS.discard(session_id)
         return False, "Attendance for this subject and session timestamp has already been recorded in the database."
 
+    # 3. Validate teacher ownership of subject
+    if not check_teacher_owns_subject(teacher_id, subject_id):
+        with _CONFIRM_LOCK:
+            _CONFIRMED_SESSION_IDS.discard(session_id)
+        return False, "Unauthorized: You do not own this subject."
+
+    # 4. Deduplicate final_attendance_records by student_id to prevent duplicates in payload
+    deduped_records: List[Dict[str, Any]] = []
+    seen_student_ids = set()
+
+    for rec in final_attendance_records:
+        sid = rec.get("student_id")
+        if sid is not None and sid not in seen_student_ids:
+            seen_student_ids.add(sid)
+            deduped_records.append({
+                "student_id": sid,
+                "subject_id": subject_id,
+                "timestamp": rec.get("timestamp") or ref_timestamp,
+                "is_present": bool(rec.get("is_present", False))
+            })
+
+    # 5. Verify student IDs belong to enrolled roster (server-side authorization)
+    enrolled = get_enrolled_students_for_subject(subject_id, include_embeddings=False)
+    if enrolled:
+        enrolled_ids = {s["student_id"] for s in enrolled}
+        invalid_sids = [r["student_id"] for r in deduped_records if r["student_id"] not in enrolled_ids]
+        if invalid_sids:
+            with _CONFIRM_LOCK:
+                _CONFIRMED_SESSION_IDS.discard(session_id)
+            return False, f"Cannot record attendance: Student ID(s) {invalid_sids} are not enrolled in this subject."
+
     try:
-        saved_logs = db_create_attendance(final_attendance_records)
+        saved_logs = db_create_attendance(deduped_records)
         if saved_logs:
             return True, f"Successfully confirmed attendance for {len(saved_logs)} students!"
-        _CONFIRMED_SESSION_IDS.discard(session_id)
+        with _CONFIRM_LOCK:
+            _CONFIRMED_SESSION_IDS.discard(session_id)
         return False, "Database returned empty result during save."
     except Exception as e:
-        _CONFIRMED_SESSION_IDS.discard(session_id)
+        err_str = str(e).lower()
+        # Translate PostgreSQL unique constraint / duplicate key violations gracefully
+        if "23505" in err_str or "duplicate key" in err_str or "unique constraint" in err_str:
+            return False, "Attendance for this subject and session timestamp has already been recorded in the database."
+        with _CONFIRM_LOCK:
+            _CONFIRMED_SESSION_IDS.discard(session_id)
         return False, f"Failed to commit attendance: {str(e)}"
 
 def get_teacher_attendance_overview(teacher_id: int) -> List[Dict[str, Any]]:

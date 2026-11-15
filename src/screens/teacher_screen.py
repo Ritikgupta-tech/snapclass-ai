@@ -29,7 +29,7 @@ from src.services.attendance_service import (
 def teacher_screen():
     style_base_layout()
 
-    if "teacher_data" in st.session_state and st.session_state.get("is_logged_in"):
+    if "teacher_data" in st.session_state and st.session_state.get("is_logged_in") and st.session_state.get("user_role") == "teacher":
         teacher_dashboard()
     elif st.session_state.get("teacher_login_type") == "register":
         teacher_screen_register()

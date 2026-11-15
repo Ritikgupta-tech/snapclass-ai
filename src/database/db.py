@@ -212,10 +212,17 @@ def check_attendance_session_exists(subject_id: int, timestamp: str) -> bool:
     return bool(response.data and len(response.data) > 0)
 
 def create_attendance(logs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Insert attendance log records."""
+    """Insert attendance log records with pre-write deduplication to guarantee at most one record per student."""
     if not logs:
         return []
-    response = supabase.table("attendance_logs").insert(logs).execute()
+    seen = set()
+    deduped = []
+    for log in logs:
+        key = (log.get("subject_id"), log.get("student_id"), log.get("timestamp"))
+        if key not in seen:
+            seen.add(key)
+            deduped.append(log)
+    response = supabase.table("attendance_logs").insert(deduped).execute()
     return response.data or []
 
 def get_student_attendance(student_id: int) -> List[Dict[str, Any]]:

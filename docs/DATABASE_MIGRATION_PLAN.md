@@ -1,15 +1,16 @@
 # SNAPCLASS AI — Database Architecture & Evolution Plan
 
-**Document Version**: 2.0.0  
+**Document Version**: 2.2.0  
 **Target Database**: Supabase PostgreSQL 15  
 **Execution Status**: Proposed & Verified (No production DDL executed per strict rules)  
 
 ---
 
-## 1. Current Verified Database Schema
+## 1. Current Verified Database Schema & Credentials
 
-Direct inspection of the active Supabase PostgreSQL instance verified the following physical schema:
+Direct read-only inspection of the active Supabase PostgreSQL instance verified the physical schema and client configuration:
 
+### 1.1 Physical Schema
 ```sql
 -- Existing Tables
 teachers (
@@ -49,20 +50,47 @@ attendance_logs (
 );
 ```
 
+### 1.2 Credential & Authorization Discovery
+- Inspection of `.streamlit/secrets.toml` confirmed that `SUPABASE_KEY` is a **`service_role` key** (`role: service_role`).
+- In Supabase PostgreSQL, requests using `service_role` bypass Row Level Security (RLS) entirely.
+- Therefore, **all tenant isolation, teacher ownership boundaries, and student profile privacy are strictly enforced at the Python application service layer (`src/services/` and `src/database/db.py`)**.
+- While RLS policies are recommended for defense-in-depth, they only activate if the application migrates to Supabase Auth (`gotrue`) user JWTs or an `anon` key client.
+
 ---
 
 ## 2. Identified Schema Limitations
 
 1. **Denormalized Session Timestamping**: `attendance_logs` currently stores individual student records grouped only by an ISO timestamp string. If network latency spans across seconds, records fragment into different groups.
 2. **Missing Session Metadata**: Session-level attributes (e.g. recognition mode: photo vs voice, instructor verification notes, detected unknown face count) cannot be captured at the session level.
-3. **Absence of Database-Level Unique Constraint on Session Attendance**: Without a unique constraint on `(session_id, student_id)`, multiple writes can insert duplicate records for the same student in a single session.
+3. **Absence of Database Unique Constraint**: Currently, `attendance_logs` has no unique constraint on `(subject_id, student_id, timestamp)`. If two requests bypass application-level locks (e.g. concurrent workers), duplicate rows are inserted.
 4. **Unindexed Foreign Keys**: For high-volume lookups, queries filtering by `teacher_id` or `subject_id` rely on sequential scans.
 
 ---
 
-## 3. Proposed Target Relational Architecture
+## 3. Two-Phase Database Evolution Plan
 
-The target architecture introduces a dedicated `attendance_sessions` table and migrates `attendance_logs` to `attendance_records` linked by foreign key:
+### Phase 1: Zero-Downtime Hardening for Existing Tables (Recommended Immediate Step)
+Before changing the application data model, applying a unique index on `attendance_logs` guarantees PostgreSQL-level atomicity across multi-worker deployments:
+
+```sql
+-- Phase 1: Immediate Concurrency Guard
+BEGIN;
+
+-- 1. Index foreign keys for performant joins
+CREATE INDEX IF NOT EXISTS idx_attendance_logs_subject_ts ON attendance_logs(subject_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_attendance_logs_student ON attendance_logs(student_id);
+CREATE INDEX IF NOT EXISTS idx_subjects_teacher ON subjects(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_subject_students_sub ON subject_students(subject_id);
+
+-- 2. Prevent duplicate attendance writes for the same student in the same session
+CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_logs_subject_student_ts 
+ON attendance_logs(subject_id, student_id, timestamp);
+
+COMMIT;
+```
+
+### Phase 2: Target Normalized Relational Architecture
+Introduces dedicated `attendance_sessions` and `attendance_records` tables while providing a backward-compatible view:
 
 ```mermaid
 erDiagram
@@ -112,11 +140,11 @@ erDiagram
 
 ---
 
-## 4. Production Migration Script (Proposed)
+## 4. Production Migration Script (Proposed Phase 2)
 
 ```sql
 -- ====================================================================
--- MIGRATION: 20261115_01_create_attendance_sessions_and_records.sql
+-- MIGRATION: 20261115_02_create_attendance_sessions_and_records.sql
 -- ====================================================================
 
 BEGIN;
@@ -150,7 +178,6 @@ CREATE INDEX IF NOT EXISTS idx_attendance_sessions_subject ON attendance_session
 CREATE INDEX IF NOT EXISTS idx_attendance_records_student ON attendance_records(student_id);
 
 -- 4. Backward Compatibility View
--- Maps the new structure to the legacy attendance_logs schema so existing code continues to function
 CREATE OR REPLACE VIEW attendance_logs_compat AS
 SELECT
     ar.id,
@@ -166,36 +193,20 @@ COMMIT;
 
 ---
 
-## 5. Row Level Security (RLS) Proposal
+## 5. Rollback Procedures
 
+### Rollback Phase 1:
 ```sql
--- Enable RLS on core tables
-ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance_records ENABLE ROW LEVEL SECURITY;
-
--- Teachers may only query and insert subjects they own
-CREATE POLICY teacher_subject_isolation ON subjects
-    FOR ALL
-    USING (teacher_id = auth.uid()::integer);
-
--- Teachers may only create attendance sessions for their own subjects
-CREATE POLICY teacher_attendance_session_isolation ON attendance_sessions
-    FOR ALL
-    USING (teacher_id = auth.uid()::integer);
-
--- Students may view only their own attendance records
-CREATE POLICY student_attendance_record_read ON attendance_records
-    FOR SELECT
-    USING (student_id = auth.uid()::integer);
+BEGIN;
+DROP INDEX IF EXISTS uq_attendance_logs_subject_student_ts;
+DROP INDEX IF EXISTS idx_attendance_logs_subject_ts;
+DROP INDEX IF EXISTS idx_attendance_logs_student;
+DROP INDEX IF EXISTS idx_subjects_teacher;
+DROP INDEX IF EXISTS idx_subject_students_sub;
+COMMIT;
 ```
 
----
-
-## 6. Rollback Procedures
-
-If any migration step encounters unexpected behavior during rollout:
-
+### Rollback Phase 2:
 ```sql
 BEGIN;
 DROP VIEW IF EXISTS attendance_logs_compat;

@@ -67,6 +67,7 @@ def match_face_to_candidates(
     best_sid = None
     best_name = None
     min_dist = float("inf")
+    second_min_dist = float("inf")
 
     for cand in candidates:
         embedding = cand.get("face_embedding")
@@ -81,9 +82,17 @@ def match_face_to_candidates(
         dist = float(np.linalg.norm(cand_vector - face_encoding))
 
         if dist < min_dist:
+            second_min_dist = min_dist
             min_dist = dist
             best_sid = cand.get("student_id")
             best_name = cand.get("name")
+        elif dist < second_min_dist:
+            second_min_dist = dist
+
+    # If top candidate and runner-up candidate have very close distances (e.g. twins or similar features),
+    # downgrade to NEEDS_REVIEW to prevent false student attribution
+    if (second_min_dist - min_dist) < 0.05 and min_dist <= distance_threshold:
+        return best_sid, best_name, min_dist, "NEEDS_REVIEW"
 
     if min_dist <= distance_threshold:
         return best_sid, best_name, min_dist, "HIGH_CONFIDENCE"

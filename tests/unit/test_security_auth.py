@@ -87,3 +87,20 @@ class TestSecurityAndAuth:
         assert "user_role" not in st.session_state
         assert "teacher_data" not in st.session_state
         assert "attendance_images" not in st.session_state
+
+    def test_rate_limiting_composite_ip_spraying_lockout(self):
+        attacker_ip = "198.51.100.42"
+        _clear_failed_attempts("any_user", attacker_ip)
+
+        # Attacker tries different usernames from same IP (15 attempts triggers IP lockout: 3 * MAX_LOGIN_ATTEMPTS)
+        for i in range(15):
+            u = f"target_user_{i}"
+            _record_failed_attempt(u, attacker_ip)
+
+        # A brand new username from this attacker IP must now be locked out
+        limited, remaining = _is_rate_limited("brand_new_user", attacker_ip)
+        assert limited is True
+        assert remaining > 0
+
+        # Clean up
+        _clear_failed_attempts("brand_new_user", attacker_ip)

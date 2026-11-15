@@ -116,3 +116,22 @@ class TestVoicePipeline:
         assert sid == 102
         assert status == "HIGH_CONFIDENCE"
         assert score > 0.90
+
+    def test_similar_voice_speakers_downgraded_to_needs_review(self):
+        query = np.zeros(256)
+        query[0] = 1.0
+
+        # Speaker 1 has similarity 0.96
+        s1 = np.zeros(256)
+        s1[0] = 0.96
+        s1[1] = np.sqrt(1 - 0.96**2)
+
+        # Speaker 2 has similarity 0.93 (gap is 0.03 < 0.05)
+        s2 = np.zeros(256)
+        s2[0] = 0.93
+        s2[1] = np.sqrt(1 - 0.93**2)
+
+        candidates = {201: s1.tolist(), 202: s2.tolist()}
+        sid, score, status = identify_speaker(query, candidates)
+        assert sid == 201
+        assert status == "NEEDS_REVIEW"

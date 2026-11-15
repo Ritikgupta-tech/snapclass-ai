@@ -102,3 +102,26 @@ class TestFacePipeline:
         sid, name, dist, status = match_face_to_candidates(v_subj_b, roster_a)
         assert sid is None
         assert status == "UNKNOWN"
+
+    def test_similar_candidates_downgraded_to_needs_review(self):
+        # Two very similar candidates (e.g. twins or duplicate enrollments)
+        v1 = np.zeros(128)
+        v1[0] = 1.0
+
+        v2 = np.zeros(128)
+        v2[0] = 0.999
+        v2[1] = np.sqrt(1 - 0.999**2)
+
+        candidates = [
+            {"student_id": 1, "name": "Twin A", "face_embedding": v1.tolist()},
+            {"student_id": 2, "name": "Twin B", "face_embedding": v2.tolist()}
+        ]
+
+        # Query identical to Twin A
+        query = v1.copy()
+        sid, name, dist, status = match_face_to_candidates(query, candidates)
+
+        # Because distance to Twin A is 0.0 and distance to Twin B is ~0.045 (< 0.05),
+        # system must downgrade to NEEDS_REVIEW to prevent false attribution
+        assert sid == 1
+        assert status == "NEEDS_REVIEW"

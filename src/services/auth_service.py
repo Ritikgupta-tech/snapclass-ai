@@ -5,6 +5,7 @@ Handles credential verification, password policy enforcement, rate limiting, and
 
 from typing import Tuple, Optional, Dict, Any
 import time
+import threading
 import streamlit as st
 from src.database.db import (
     teacher_login as db_teacher_login,
@@ -19,49 +20,75 @@ from src.validators.input_validators import (
 )
 from src.config.app_config import MAX_LOGIN_ATTEMPTS, LOCKOUT_DURATION_SECONDS
 
-# Module-level persistent tracker across all Streamlit sessions in the process
-# Prevents bypassing lockout by restarting session or opening new tabs
+# Module-level persistent tracker across all Streamlit sessions in this process.
+# Thread-safe in-memory rate limiting; protects against session-clearing & tab resets.
 _GLOBAL_LOGIN_ATTEMPTS: Dict[str, Dict[str, Any]] = {}
+_LOGIN_LOCK = threading.Lock()
+
+def _get_client_ip() -> str:
+    """Safely extract client IP from Streamlit context without raising outside request."""
+    try:
+        return getattr(st.context, "ip_address", None) or "local"
+    except Exception:
+        return "local"
 
 def _get_login_attempts() -> Dict[str, Dict[str, Any]]:
     """Retrieve process-wide rate limiting attempt tracker."""
     global _GLOBAL_LOGIN_ATTEMPTS
     return _GLOBAL_LOGIN_ATTEMPTS
 
-def _is_rate_limited(username: str) -> Tuple[bool, int]:
-    """Check if username is temporarily locked out due to excessive failed attempts."""
-    tracker = _get_login_attempts()
-    record = tracker.get(username)
-    if not record:
-        return False, 0
+def _is_rate_limited(username: str, ip: Optional[str] = None) -> Tuple[bool, int]:
+    """Check if username or client IP is temporarily locked out due to excessive failed attempts."""
+    now = time.time()
+    with _LOGIN_LOCK:
+        # 1. Check target username limit
+        record = _GLOBAL_LOGIN_ATTEMPTS.get(username)
+        if record:
+            attempts = record.get("count", 0)
+            elapsed = now - record.get("last_attempt", 0)
+            if attempts >= MAX_LOGIN_ATTEMPTS:
+                if elapsed < LOCKOUT_DURATION_SECONDS:
+                    return True, int(LOCKOUT_DURATION_SECONDS - elapsed)
+                else:
+                    _GLOBAL_LOGIN_ATTEMPTS[username] = {"count": 0, "last_attempt": now}
 
-    attempts = record.get("count", 0)
-    last_time = record.get("last_attempt", 0)
-    elapsed = time.time() - last_time
-
-    if attempts >= MAX_LOGIN_ATTEMPTS:
-        if elapsed < LOCKOUT_DURATION_SECONDS:
-            remaining = int(LOCKOUT_DURATION_SECONDS - elapsed)
-            return True, remaining
-        else:
-            # Lockout period expired; reset tracker
-            tracker[username] = {"count": 0, "last_attempt": time.time()}
-            return False, 0
+        # 2. Check client IP limit (protects against distributed dictionary spraying)
+        if ip and ip != "local":
+            ip_key = f"ip:{ip}"
+            ip_record = _GLOBAL_LOGIN_ATTEMPTS.get(ip_key)
+            if ip_record:
+                ip_attempts = ip_record.get("count", 0)
+                ip_elapsed = now - ip_record.get("last_attempt", 0)
+                if ip_attempts >= (MAX_LOGIN_ATTEMPTS * 3):
+                    if ip_elapsed < LOCKOUT_DURATION_SECONDS:
+                        return True, int(LOCKOUT_DURATION_SECONDS - ip_elapsed)
+                    else:
+                        _GLOBAL_LOGIN_ATTEMPTS[ip_key] = {"count": 0, "last_attempt": now}
 
     return False, 0
 
-def _record_failed_attempt(username: str):
+def _record_failed_attempt(username: str, ip: Optional[str] = None):
     """Increment failed login attempts for rate limiting."""
-    tracker = _get_login_attempts()
-    record = tracker.get(username, {"count": 0, "last_attempt": time.time()})
-    record["count"] += 1
-    record["last_attempt"] = time.time()
-    tracker[username] = record
+    now = time.time()
+    with _LOGIN_LOCK:
+        rec = _GLOBAL_LOGIN_ATTEMPTS.get(username, {"count": 0, "last_attempt": now})
+        rec["count"] += 1
+        rec["last_attempt"] = now
+        _GLOBAL_LOGIN_ATTEMPTS[username] = rec
 
-def _clear_failed_attempts(username: str):
+        if ip and ip != "local":
+            ip_key = f"ip:{ip}"
+            ip_rec = _GLOBAL_LOGIN_ATTEMPTS.get(ip_key, {"count": 0, "last_attempt": now})
+            ip_rec["count"] += 1
+            ip_rec["last_attempt"] = now
+            _GLOBAL_LOGIN_ATTEMPTS[ip_key] = ip_rec
+
+def _clear_failed_attempts(username: str, ip: Optional[str] = None):
     """Clear failed attempts upon successful authentication."""
-    tracker = _get_login_attempts()
-    tracker.pop(username, None)
+    with _LOGIN_LOCK:
+        _GLOBAL_LOGIN_ATTEMPTS.pop(username, None)
+        if ip and ip != "local":
+            _GLOBAL_LOGIN_ATTEMPTS.pop(f"ip:{ip}", None)
 
 def login_teacher(username: str, password: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
@@ -72,16 +99,17 @@ def login_teacher(username: str, password: str) -> Tuple[bool, str, Optional[Dic
     if not clean_user or not password:
         return False, "Username and password are required.", None
 
-    is_limited, remaining_sec = _is_rate_limited(clean_user)
+    client_ip = _get_client_ip()
+    is_limited, remaining_sec = _is_rate_limited(clean_user, client_ip)
     if is_limited:
         return False, f"Too many failed attempts. Account temporarily locked for {remaining_sec} seconds.", None
 
     teacher = db_teacher_login(clean_user, password)
     if not teacher:
-        _record_failed_attempt(clean_user)
+        _record_failed_attempt(clean_user, client_ip)
         return False, "Invalid username or password.", None
 
-    _clear_failed_attempts(clean_user)
+    _clear_failed_attempts(clean_user, client_ip)
     # Populate authenticated state
     st.session_state.is_logged_in = True
     st.session_state.user_role = "teacher"

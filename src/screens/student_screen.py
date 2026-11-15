@@ -39,7 +39,7 @@ from src.validators.image_validators import validate_and_prepare_image
 def student_screen():
     style_base_layout()
 
-    if "student_data" in st.session_state and st.session_state.get("is_logged_in"):
+    if "student_data" in st.session_state and st.session_state.get("is_logged_in") and st.session_state.get("user_role") == "student":
         student_dashboard()
     else:
         student_login_and_register_view()
@@ -88,7 +88,7 @@ def student_login_and_register_view():
                                 ambiguous_threshold=0.62
                             )
 
-                            if sid is not None and status in ("HIGH_CONFIDENCE", "NEEDS_REVIEW"):
+                            if sid is not None and status == "HIGH_CONFIDENCE":
                                 success, msg, student = login_student_by_id(sid)
                                 if success:
                                     st.toast(f"Welcome back, {name}!", icon="👋")
@@ -96,6 +96,8 @@ def student_login_and_register_view():
                                     st.rerun()
                                 else:
                                     st.error(msg)
+                            elif sid is not None and status == "NEEDS_REVIEW":
+                                st.warning("⚠️ Face match confidence was borderline. For portal security, high confidence is required. Please face the camera directly with good lighting.")
                             else:
                                 st.info("Face not recognized in student registry. If you are a new student, please complete registration below.")
                                 show_registration_form = True

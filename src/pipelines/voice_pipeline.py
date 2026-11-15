@@ -85,6 +85,7 @@ def identify_speaker(
 
     best_sid = None
     best_score = -1.0
+    second_score = -1.0
 
     for sid, stored_embedding in candidates_dict.items():
         if not stored_embedding:
@@ -95,11 +96,19 @@ def identify_speaker(
                 continue
             sim = compute_cosine_similarity(segment_embedding, cand_vec)
             if sim > best_score:
+                second_score = best_score
                 best_score = sim
                 best_sid = sid
+            elif sim > second_score:
+                second_score = sim
         except Exception as e:
             logger.warning(f"Error computing similarity for candidate {sid}: {e}")
             continue
+
+    # If top candidate and runner-up candidate have very close scores (gap < 0.05),
+    # downgrade to NEEDS_REVIEW to prevent false speaker attribution
+    if (best_score - second_score) < 0.05 and best_score >= confidence_threshold:
+        return best_sid, round(best_score, 4), "NEEDS_REVIEW"
 
     if best_score >= confidence_threshold:
         return best_sid, round(best_score, 4), "HIGH_CONFIDENCE"
