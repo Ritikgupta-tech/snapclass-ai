@@ -31,7 +31,7 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip setuptools<81.0.0 wheel && \
+RUN pip install --upgrade pip "setuptools<81.0.0" wheel && \
     pip install cmake && \
     (pip install -r requirements.txt || (pip install dlib && pip install -r requirements.txt))
 
