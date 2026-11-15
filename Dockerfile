@@ -31,9 +31,10 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip "setuptools<81.0.0" wheel && \
-    pip install cmake && \
-    (pip install -r requirements.txt || (pip install dlib && pip install -r requirements.txt))
+RUN pip install --no-cache-dir --upgrade pip "setuptools<81.0.0" wheel && \
+    pip install --no-cache-dir cmake && \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    (pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt || (pip install --no-cache-dir dlib && pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt))
 
 # Copy application source code and configuration
 COPY --chown=appuser:snapclass app.py .
