@@ -1,36 +1,65 @@
+"""
+SNAPCLASS AI — Application Entrypoint & Global Router.
+Coordinates page configuration, session state initialization, routing, and query parameters.
+"""
 
 import streamlit as st
 
 from src.screens.home_screen import home_screen
 from src.screens.teacher_screen import teacher_screen
 from src.screens.student_screen import student_screen
-
 from src.components.dialog_auto_enroll import auto_enroll_dialog
+
+def init_session_state():
+    """Ensure baseline session state keys are initialized safely."""
+    defaults = {
+        "login_type": None,
+        "is_logged_in": False,
+        "user_role": None,
+        "teacher_data": None,
+        "student_data": None,
+        "attendance_images": [],
+        "voice_attendance_results": None,
+        "active_attendance_session": None,
+        "current_teacher_tab": "take_attendance",
+        "show_student_registration": False,
+        "login_attempts_tracker": {}
+    }
+    for key, val in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = val
 
 def main():
     st.set_page_config(
-        page_title='SnapClass - Making Attendance faster using AI',
-        page_icon= "https://i.ibb.co/YTYGn5qV/logo.png"
+        page_title="SNAPCLASS AI — Multi-Modal Attendance SaaS",
+        page_icon="https://i.ibb.co/YTYGn5qV/logo.png",
+        layout="wide",
+        initial_sidebar_state="collapsed"
     )
-    if 'login_type' not in st.session_state:
-        st.session_state['login_type'] = None
 
-    match st.session_state['login_type']:
-        case 'teacher':
-            teacher_screen()
+    init_session_state()
 
-        case 'student':
-            student_screen()
-        
-        case None:
-            home_screen()
+    # Route based on navigation state
+    login_type = st.session_state.get("login_type")
 
+    if login_type == "teacher":
+        teacher_screen()
+    elif login_type == "student":
+        student_screen()
+    else:
+        home_screen()
 
-    join_code = st.query_params.get('join-code')
+    # Handle QR Join Invitation Link
+    join_code = st.query_params.get("join-code")
     if join_code:
-        if st.session_state.login_type != 'student':
-            st.session_state.login_type = 'student'
+        # Route unauthenticated or non-student users to student screen
+        if st.session_state.get("login_type") != "student":
+            st.session_state["login_type"] = "student"
             st.rerun()
-        if st.session_state.get('is_logged_in') and st.session_state.get('user_role') == 'student':
+
+        # If student is authenticated, show instant enrollment dialog
+        if st.session_state.get("is_logged_in") and st.session_state.get("user_role") == "student":
             auto_enroll_dialog(join_code)
-main()
+
+if __name__ == "__main__":
+    main()

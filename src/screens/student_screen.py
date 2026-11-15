@@ -1,188 +1,284 @@
+"""
+Student Portal Screen for SNAPCLASS AI.
+Provides FaceID authentication, biometric profile enrollment, course management, and attendance history.
+"""
+
+from typing import Dict, Any, List
 import streamlit as st
+import numpy as np
+from PIL import Image
+import time
+import pandas as pd
 
-from src.ui.base_layout import style_background_dashboard, style_base_layout
-
+from src.ui.base_layout import style_base_layout
 from src.components.header import header_dashboard
 from src.components.footer import footer_dashboard
-from PIL import Image
-import numpy as np
-from src.pipelines.face_pipeline import predict_attendance, get_face_embeddings, train_classifier
-from src.pipelines.voice_pipeline import get_voice_embedding
-from src.database.db import get_all_students, create_student, get_student_subjects, get_student_attendance, unenroll_student_to_subject
-import time
-
-from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
+from src.components.dialog_enroll import enroll_dialog
 
-def student_dashboard():
-    student_data = st.session_state.student_data
-    student_id = student_data['student_id']
-    c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
+from src.database.db import (
+    get_all_students,
+    get_student_attendance
+)
+from src.services.auth_service import (
+    login_student_by_id,
+    register_student,
+    logout
+)
+from src.services.subject_service import (
+    get_student_dashboard_data,
+    unenroll_student_from_subject
+)
+from src.pipelines.face_pipeline import (
+    get_face_embeddings,
+    match_face_to_candidates
+)
+from src.pipelines.voice_pipeline import get_voice_embedding
+from src.validators.image_validators import validate_and_prepare_image
+
+def student_screen():
+    style_base_layout()
+
+    if "student_data" in st.session_state and st.session_state.get("is_logged_in"):
+        student_dashboard()
+    else:
+        student_login_and_register_view()
+
+# --- Student Login & Biometric Registration View ---
+
+def student_login_and_register_view():
+    c1, c2 = st.columns([3, 1], vertical_alignment="center")
     with c1:
         header_dashboard()
     with c2:
-        st.subheader(f"""Welcome, {student_data['name']} """)
-        if st.button("Logout", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
-            st.session_state['is_logged_in'] = False
-            del st.session_state.student_data 
+        if st.button("Return to Home", type="secondary", key="student_login_home_btn"):
+            st.session_state["login_type"] = None
             st.rerun()
 
+    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
 
-    st.space()
+    with st.container(border=True):
+        st.markdown("### 👤 Student FaceID Sign In")
+        st.caption("Center your face in the camera view to authenticate using your registered biometric face profile.")
 
-    c1, c2 =st.columns(2)
+        photo_source = st.camera_input("Position face in the frame", key="student_faceid_camera")
+
+        show_registration_form = st.session_state.get("show_student_registration", False)
+
+        if photo_source:
+            try:
+                pil_img = Image.open(photo_source)
+                is_valid, err_msg, np_img = validate_and_prepare_image(pil_img)
+
+                if is_valid and np_img is not None:
+                    with st.spinner("Analyzing facial geometry..."):
+                        encodings = get_face_embeddings(np_img)
+
+                        if len(encodings) == 0:
+                            st.warning("⚠️ No face detected in frame. Please ensure proper lighting and face the camera.")
+                        elif len(encodings) > 1:
+                            st.warning("⚠️ Multiple faces detected. Please ensure only you are visible in the frame.")
+                        else:
+                            # 1 single face detected; match against enrolled database students
+                            student_candidates = get_all_students(include_embeddings=True)
+                            sid, name, dist, status = match_face_to_candidates(
+                                encodings[0],
+                                student_candidates,
+                                distance_threshold=0.55,
+                                ambiguous_threshold=0.62
+                            )
+
+                            if sid is not None and status in ("HIGH_CONFIDENCE", "NEEDS_REVIEW"):
+                                success, msg, student = login_student_by_id(sid)
+                                if success:
+                                    st.toast(f"Welcome back, {name}!", icon="👋")
+                                    time.sleep(1)
+                                    st.rerun()
+                                else:
+                                    st.error(msg)
+                            else:
+                                st.info("Face not recognized in student registry. If you are a new student, please complete registration below.")
+                                show_registration_form = True
+            except Exception as e:
+                st.error(f"Error processing camera input: {e}")
+
+        # Fallback registration button if not auto-triggered
+        if not show_registration_form:
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+            if st.button("New student? Register profile", type="tertiary", key="toggle_reg_form_btn"):
+                st.session_state["show_student_registration"] = True
+                st.rerun()
+
+    # Registration Form Container
+    if show_registration_form:
+        st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("### 📝 Register Student Biometric Profile")
+            st.caption("Enter your legal name and enroll facial and optional voice references.")
+
+            new_name = st.text_input("Full Name *", placeholder="e.g. Ritik Gupta", key="student_reg_name_input")
+
+            st.markdown("##### Step 1: Facial Snapshot")
+            st.caption("The camera snapshot above will be used to generate your 128-dimensional facial reference embedding.")
+
+            st.markdown("##### Step 2: Optional Voice Profile")
+            st.caption("Enroll a voice reference to enable voice roll-call attendance.")
+
+            audio_data = st.audio_input("Record phrase: 'I am present and ready for class'", key="student_reg_audio_input")
+
+            st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("Cancel Registration", width="stretch", key="student_reg_cancel_btn"):
+                    st.session_state["show_student_registration"] = False
+                    st.rerun()
+
+            with col2:
+                if st.button("Create Student Profile", type="primary", width="stretch", icon=":material/how_to_reg:", key="student_reg_submit_btn"):
+                    if not (new_name or "").strip():
+                        st.warning("Please enter your full name.")
+                    elif not photo_source:
+                        st.warning("Please capture your face using the camera above.")
+                    else:
+                        with st.spinner("Extracting biometric features..."):
+                            try:
+                                pil_img = Image.open(photo_source)
+                                is_valid, _, np_img = validate_and_prepare_image(pil_img)
+                                encodings = get_face_embeddings(np_img)
+
+                                if not encodings:
+                                    st.error("Could not capture facial features. Please ensure your face is well lit and clear.")
+                                else:
+                                    face_emb = encodings[0].tolist()
+
+                                    # Process optional voice embedding
+                                    voice_emb = None
+                                    if audio_data:
+                                        audio_bytes = audio_data.getvalue() if hasattr(audio_data, "getvalue") else audio_data.read()
+                                        voice_emb = get_voice_embedding(audio_bytes)
+
+                                    success, msg, student = register_student(new_name, face_emb, voice_emb)
+                                    if success:
+                                        st.success(msg)
+                                        st.session_state["show_student_registration"] = False
+                                        time.sleep(1.2)
+                                        st.rerun()
+                                    else:
+                                        st.error(msg)
+                            except Exception as e:
+                                st.error(f"Registration error: {e}")
+
+    footer_dashboard()
+
+# --- Authenticated Student Dashboard ---
+
+def student_dashboard():
+    student_data = st.session_state["student_data"]
+    student_id = student_data["student_id"]
+    student_name = student_data.get("name", "Student")
+
+    # Header with sign out
+    c1, c2 = st.columns([3, 1], vertical_alignment="center")
     with c1:
-        st.header('Your Enrolled Subjects')
+        header_dashboard()
+        st.caption(f"Student Portal • Welcome, **{student_name}** (`ID: #{student_id}`)")
     with c2:
-        if st.button('Enroll in Subject', type='primary', width='stretch'):
-            enroll_dialog()
+        if st.button("Sign Out", type="secondary", icon=":material/logout:", width="stretch", key="student_signout_btn"):
+            logout()
+            st.rerun()
 
+    # Load Enrolled Subjects & Overall Attendance
+    subjects, summary = get_student_dashboard_data(student_id)
+
+    # Overview Metrics Row
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Enrolled Courses", summary["enrolled_count"])
+    with m2:
+        st.metric("Total Classes Held", summary["total_classes"])
+    with m3:
+        st.metric("Classes Attended", summary["total_attended"])
+    with m4:
+        st.metric("Overall Attendance", f"{summary['overall_pct']}%")
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+    # Action Toolbar
+    col_hdr, col_btn = st.columns([3, 1], vertical_alignment="center")
+    with col_hdr:
+        st.subheader("Your Enrolled Subjects")
+    with col_btn:
+        if st.button("Enroll in Subject", type="primary", icon=":material/add:", width="stretch", key="student_open_enroll_btn"):
+            enroll_dialog()
 
     st.divider()
 
-
-    with st.spinner('Loading your enrolled subjects..'):
-        subjects = get_student_subjects(student_id)
-        logs = get_student_attendance(student_id)
-
-    stats_map = {}
-
-    for log in logs:
-        sid = log['subject_id']
-
-        if sid not in stats_map:
-            stats_map[sid] = {"total":0, "attended": 0}
-
-        stats_map[sid]['total'] +=1
-
-        if log.get('is_present'):
-            stats_map[sid]['attended'] += 1
-
-
-    cols = st.columns(2)
-    for i, sub_node in enumerate(subjects):
-        sub = sub_node['subjects']
-        sid = sub['subject_id']
-
-
-        stats = stats_map.get(sid,{"total":0, "attended": 0} )
-        def unenroll_button():
-                if st.button("Unenroll from tihs course", type='tertiary', width='stretch', icon=':material/delete_forever:'):
-                    unenroll_student_to_subject(student_id, sid)
-                    st.toast(f'Unenrolled from {sub['name']} successfully!')
-                    st.rerun()
-
-        with cols[i % 2]:
-
-            subject_card(
-                name = sub['name'],
-                code =sub['subject_code'],
-                section = sub['section'],
-                stats = [
-                    ('📅', 'Total', stats['total']),
-                    ('✅', 'Attended', stats['attended']),
-                ],
-                footer_callback=unenroll_button
-            )
-    footer_dashboard()
-
-
-def student_screen():
-
-
-    style_background_dashboard()
-    style_base_layout()
-
-
-    if "student_data" in st.session_state:
-        student_dashboard()
-        return
-    
-    c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
-    with c1:
-        header_dashboard()
-    with c2:
-        if st.button("Go back to Home", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
-            st.session_state['login_type'] = None
-            st.rerun()
-
-    st.header('Login using FaceID', text_alignment='center')
-    st.space()
-    st.space()
-    
-    show_registration = False
-    photo_source = st.camera_input("Position your face in the center")
-
-    if photo_source:
-        img = np.array(Image.open(photo_source))
-
-        with st.spinner('AI is scanning..'):
-            detected, all_ids, num_faces = predict_attendance(img)
-
-            if num_faces == 0:
-                st.warning('Face not found!')
-            elif num_faces >1:
-                st.warning('Multiple faces found')
-            else:
-                if detected:
-                    student_id = list(detected.keys())[0]
-                    all_students = get_all_students()
-                    student = next((s for s in all_students if s['student_id']==student_id), None)
-
-                    if student:
-                        st.session_state.is_logged_in = True
-                        st.session_state.user_role = 'student'
-                        st.session_state.student_data = student
-                        st.toast(f'Welcome Back {student['name']}')
-                        time.sleep(1)
-                        st.rerun()
-                else:
-                    st.info('Face not recognized! You might be a new student!')
-                    show_registration = True
-    if show_registration:
+    if not subjects:
         with st.container(border=True):
-            st.header('Register new Profile')
-            new_name = st.text_input("Enter your name", placeholder='E.g. Hamza Rizvi')
+            st.markdown("### No Courses Enrolled")
+            st.caption("You are not currently enrolled in any academic courses. Ask your instructor for the subject code or QR link to join.")
+    else:
+        cols = st.columns(2)
+        for i, sub in enumerate(subjects):
+            sid = sub["subject_id"]
+            sname = sub["name"]
+            scode = sub["subject_code"]
+            ssec = sub["section"]
 
-            st.subheader('Optional : Voice Enrollment')
-            st.info("Enroll your for voice only attendance")
+            stats = [
+                ("📅", "Classes", sub["total_classes"]),
+                ("✅", "Attended", sub["attended_classes"]),
+                ("📊", "Rate", f"{sub['attendance_pct']}%")
+            ]
 
-
-            audio_data = None
-
-            try:
-                audio_data = st.audio_input('Record a short phrase like I am present, My name is Akash.')
-            except Exception:
-                st.error('Audio Data failed!')
-
-            if st.button('Create Account', type='primary'):
-                if new_name:
-                    with st.spinner('Creating profile..'):
-                        img = np.array(Image.open(photo_source))
-                        encodings= get_face_embeddings(img)
-                        if encodings:
-                            face_emb = encodings[0].tolist()
-
-                            voice_emb = None
-                            if audio_data:
-                                voice_emb = get_voice_embedding(audio_data.read())
-
-                            response_data = create_student(new_name, face_embedding=face_emb, voice_embedding=voice_emb)
-
-                            if response_data:
-                                train_classifier()
-                                st.session_state.is_logged_in = True
-                                st.session_state.user_role = 'student'
-                                st.session_state.student_data = response_data[0]
-                                st.toast(f'Profile Created! Hi {new_name}!')
-                                time.sleep(1)
-                                st.rerun()
+            def make_unenroll_callback(subject_id=sid, course_name=sname):
+                def callback():
+                    if st.button("Unenroll from Course", type="tertiary", icon=":material/delete_forever:", width="stretch", key=f"unenroll_btn_{subject_id}"):
+                        success, msg = unenroll_student_from_subject(student_id, subject_id)
+                        if success:
+                            st.toast(f"Unenrolled from {course_name}.", icon="👋")
+                            st.rerun()
                         else:
-                            st.error('Couldnt capture your facial features for registration')
+                            st.error(msg)
+                return callback
 
-                else:
-                    st.warning('Please enter your name!')
+            with cols[i % 2]:
+                subject_card(
+                    name=sname,
+                    code=scode,
+                    section=ssec,
+                    stats=stats,
+                    footer_callback=make_unenroll_callback()
+                )
 
+    # Attendance History Section
+    st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
+    st.subheader("Attendance History Log")
 
-        
+    raw_logs = get_student_attendance(student_id)
+    if not raw_logs:
+        st.caption("No attendance logs recorded yet.")
+    else:
+        history_rows = []
+        for log in raw_logs:
+            sub = log.get("subjects") or {}
+            ts = log.get("timestamp") or ""
+            try:
+                dt_obj = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                formatted_date = dt_obj.strftime("%b %d, %Y - %I:%M %p")
+            except Exception:
+                formatted_date = ts
+
+            history_rows.append({
+                "Date & Time": formatted_date,
+                "Course": sub.get("name", "Unknown"),
+                "Code": sub.get("subject_code", "N/A"),
+                "Section": sub.get("section", "N/A"),
+                "Status": "✅ Present" if log.get("is_present") else "❌ Absent"
+            })
+
+        df_history = pd.DataFrame(history_rows)
+        st.dataframe(df_history, hide_index=True, width="stretch")
+
     footer_dashboard()
