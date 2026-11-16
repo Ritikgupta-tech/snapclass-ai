@@ -214,62 +214,144 @@ def style_base_layout():
                 transform: translateY(-2px) !important;
             }
 
-            /* --- High-End Buttons --- */
-            button[data-testid="baseButton-primary"] {
+            /* --- High-End Buttons (Primary, Secondary, Tertiary) --- */
+            button[data-testid="baseButton-primary"],
+            button[kind="primary"],
+            .stButton > button[kind="primary"] {
                 background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #4338CA 100%) !important;
-                border: 1px solid rgba(255, 255, 255, 0.18) !important;
+                background-color: #6366F1 !important;
+                border: 1px solid rgba(255, 255, 255, 0.22) !important;
                 border-radius: 10px !important;
+                color: #FFFFFF !important;
                 padding: 0.6rem 1.4rem !important;
                 font-weight: 600 !important;
                 letter-spacing: -0.01em !important;
-                box-shadow: 0 4px 16px rgba(79, 70, 229, 0.35) !important;
+                box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4) !important;
                 transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
             }
 
-            button[data-testid="baseButton-primary"]:hover {
+            button[data-testid="baseButton-primary"]:hover,
+            button[kind="primary"]:hover,
+            .stButton > button[kind="primary"]:hover {
                 transform: translateY(-2px) !important;
-                box-shadow: 0 6px 24px rgba(99, 102, 241, 0.55) !important;
-                border-color: rgba(255, 255, 255, 0.35) !important;
+                box-shadow: 0 6px 24px rgba(99, 102, 241, 0.6) !important;
+                border-color: rgba(255, 255, 255, 0.4) !important;
+                color: #FFFFFF !important;
             }
 
-            button[data-testid="baseButton-secondary"] {
-                background: rgba(255, 255, 255, 0.04) !important;
-                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            button[data-testid="baseButton-secondary"],
+            button[kind="secondary"],
+            .stButton > button[kind="secondary"],
+            .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]) {
+                background-color: #141C2E !important;
+                background: #141C2E !important;
+                border: 1px solid #2B3852 !important;
                 border-radius: 10px !important;
+                color: #F8FAFC !important;
                 padding: 0.6rem 1.4rem !important;
-                font-weight: 500 !important;
-                backdrop-filter: blur(8px) !important;
+                font-weight: 600 !important;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
                 transition: all 0.2s ease !important;
             }
 
-            button[data-testid="baseButton-secondary"]:hover {
-                background: rgba(255, 255, 255, 0.08) !important;
-                border-color: rgba(255, 255, 255, 0.25) !important;
+            button[data-testid="baseButton-secondary"]:hover,
+            button[kind="secondary"]:hover,
+            .stButton > button[kind="secondary"]:hover,
+            .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]):hover {
+                background-color: #1C2740 !important;
+                background: #1C2740 !important;
+                border-color: #6366F1 !important;
+                color: #FFFFFF !important;
+                box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25) !important;
                 transform: translateY(-1px) !important;
             }
 
-            /* --- Streamlit Metrics Cards Refinement --- */
-            div[data-testid="stMetric"] {
-                background: rgba(255, 255, 255, 0.02) !important;
-                border: 1px solid rgba(255, 255, 255, 0.06) !important;
-                padding: 0.85rem 1.15rem !important;
-                border-radius: 12px !important;
-                backdrop-filter: blur(8px) !important;
+            button[data-testid="baseButton-tertiary"],
+            button[kind="tertiary"],
+            .stButton > button[kind="tertiary"] {
+                background: transparent !important;
+                background-color: transparent !important;
+                border: 1px solid rgba(255, 255, 255, 0.12) !important;
+                border-radius: 8px !important;
+                color: #C7D2FE !important;
+                font-weight: 500 !important;
+                transition: all 0.2s ease !important;
             }
 
-            div[data-testid="stMetricLabel"] {
-                font-size: 0.78rem !important;
+            button[data-testid="baseButton-tertiary"]:hover,
+            button[kind="tertiary"]:hover,
+            .stButton > button[kind="tertiary"]:hover {
+                background: rgba(99, 102, 241, 0.12) !important;
+                border-color: #818CF8 !important;
+                color: #FFFFFF !important;
+            }
+
+            /* Ensure all button text and icon spans inherit bright legible color */
+            button * {
+                color: inherit !important;
+                fill: currentColor !important;
+            }
+
+            /* --- Streamlit Metrics Cards Refinement (High Contrast) --- */
+            div[data-testid="stMetric"],
+            .stMetric {
+                background-color: #0E1526 !important;
+                background: #0E1526 !important;
+                border: 1px solid #1E293B !important;
+                padding: 0.85rem 1.15rem !important;
+                border-radius: 12px !important;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+            }
+
+            div[data-testid="stMetricLabel"],
+            div[data-testid="stMetricLabel"] *,
+            .stMetric label,
+            .stMetric label * {
+                font-size: 0.76rem !important;
                 font-weight: 600 !important;
                 text-transform: uppercase !important;
                 letter-spacing: 0.05em !important;
                 color: #94A3B8 !important;
+                -webkit-text-fill-color: #94A3B8 !important;
             }
 
-            div[data-testid="stMetricValue"] {
+            div[data-testid="stMetricValue"],
+            div[data-testid="stMetricValue"] *,
+            .stMetric [data-testid="stMetricValue"],
+            .stMetric [data-testid="stMetricValue"] * {
                 font-family: 'JetBrains Mono', monospace !important;
                 font-size: 1.65rem !important;
                 font-weight: 700 !important;
                 letter-spacing: -0.03em !important;
+                color: #38BDF8 !important;
+                -webkit-text-fill-color: #38BDF8 !important;
+            }
+
+            /* High contrast inside subject cards */
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"],
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"] * {
+                color: #10B981 !important;
+                -webkit-text-fill-color: #10B981 !important;
+            }
+
+            /* --- Inputs, Selectboxes, and Textareas --- */
+            div[data-baseweb="input"],
+            div[data-baseweb="select"] > div,
+            div[data-baseweb="textarea"] {
+                background-color: #0E1422 !important;
+                border: 1px solid #1E293B !important;
+                border-radius: 8px !important;
+                color: #F8FAFC !important;
+            }
+
+            input, textarea {
+                color: #F8FAFC !important;
+                -webkit-text-fill-color: #F8FAFC !important;
+            }
+
+            ::placeholder {
+                color: #64748B !important;
+                -webkit-text-fill-color: #64748B !important;
             }
 
             /* --- Code Blocks & Badges --- */
@@ -278,6 +360,9 @@ def style_base_layout():
                 border-radius: 6px !important;
                 padding: 0.2rem 0.45rem !important;
                 font-size: 0.85rem !important;
+                background: #111827 !important;
+                color: #A5B4FC !important;
+                border: 1px solid #1E293B !important;
             }
 
             /* --- Responsive Mobile & Tablet Breakpoints --- */
@@ -301,6 +386,25 @@ def style_base_layout():
                     gap: 8px;
                     font-size: 0.72rem;
                     padding: 0.75rem 1rem;
+                }
+                /* Flexible 2x2 wrapping for metrics on mobile screens */
+                div[data-testid="stHorizontalBlock"] {
+                    flex-wrap: wrap !important;
+                    gap: 12px !important;
+                }
+                div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                    min-width: calc(50% - 8px) !important;
+                    flex: 1 1 calc(50% - 8px) !important;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .hero-title-gradient {
+                    font-size: 1.65rem !important;
+                }
+                div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                    min-width: 100% !important;
+                    flex: 1 1 100% !important;
                 }
             }
         </style>

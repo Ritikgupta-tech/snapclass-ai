@@ -67,7 +67,7 @@ def prepare_face_attendance_session(
 
     candidates_with_emb = [s for s in enrolled_students if s.get("face_embedding")]
     if not candidates_with_emb:
-        return False, "Enrolled students do not have facial profiles registered. Students must enroll face biometrics.", None
+        return False, "Enrolled students have not registered their face profile yet. Students must register their face before attendance can be taken.", None
 
     session_id = uuid.uuid4().hex[:12]
     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")

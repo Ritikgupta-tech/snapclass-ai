@@ -16,7 +16,7 @@ def auto_enroll_dialog(subject_code: str):
     student_data = st.session_state.get("student_data")
 
     if not student_data or "student_id" not in student_data:
-        st.info("Please log in with your Student FaceID to join this course.")
+        st.info("Please sign in to your student account to join this course.")
         if st.button("Close", key="auto_enroll_unauth_close"):
             st.query_params.clear()
             st.rerun()

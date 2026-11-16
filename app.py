@@ -34,7 +34,7 @@ def init_session_state():
 
 def main():
     st.set_page_config(
-        page_title="SNAPCLASS AI — Multi-Modal Attendance SaaS",
+        page_title="SNAPCLASS AI — Smart Classroom Attendance",
         page_icon="https://i.ibb.co/YTYGn5qV/logo.png",
         layout="wide",
         initial_sidebar_state="collapsed"

@@ -272,7 +272,7 @@ def teacher_tab_take_attendance(subjects: List[Dict[str, Any]], teacher_id: int)
     with col_voice_btn:
         with st.container(border=True):
             st.markdown("##### 🎙️ Voice Attendance")
-            st.caption("Record vocal roll-calls for speaker identification.")
+            st.caption("Record students speaking to verify attendance by voice.")
             if st.button("Start Voice Roll-Call", type="primary", width="stretch", icon=":material/mic:", key="btn_open_voice_dialog"):
                 voice_attendance_dialog(selected_subject_id)
 
