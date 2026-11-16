@@ -166,7 +166,17 @@ def teacher_dashboard():
     c1, c2, c3 = st.columns([5, 2, 2], vertical_alignment="center")
     with c1:
         header_dashboard()
-        st.caption(f"Signed in as **{teacher_data.get('name', 'Instructor')}** (`{teacher_data.get('username')}`)")
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                <span class="live-dot-indigo"></span>
+                <span style="font-size: 0.8rem; color: #94A3B8;">Faculty Session:</span>
+                <span style="font-size: 0.82rem; font-weight: 700; color: #FFFFFF;">{teacher_data.get('name', 'Instructor')}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #94A3B8;">@{teacher_data.get('username')}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     with c2:
         if st.button("Refresh", type="secondary", icon=":material/refresh:", width="stretch", key="teacher_refresh_data_btn"):
             invalidate_teacher_cache()
@@ -182,6 +192,7 @@ def teacher_dashboard():
     total_students = sum(s.get("total_students", 0) for s in subjects)
     total_classes = sum(s.get("total_classes", 0) for s in subjects)
 
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     m1, m2, m3 = st.columns(3)
     with m1:
         st.metric("Total Subjects", len(subjects))

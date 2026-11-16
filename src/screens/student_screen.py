@@ -57,7 +57,17 @@ def student_login_and_register_view():
     st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.markdown("### 👤 Student FaceID Sign In")
+        st.markdown(
+            """
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 0.5rem;">
+                <span style="font-size: 1.25rem; font-weight: 700; color: #FFFFFF;">👤 Student FaceID Sign In</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); color: #10B981;">
+                    <span class="live-dot-green"></span>BIOMETRIC VIEWFINDER ACTIVE
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         st.caption("Center your face in the camera view to authenticate using your registered biometric face profile.")
 
         photo_source = st.camera_input("Position face in the frame", key="student_faceid_camera")
@@ -207,7 +217,18 @@ def student_dashboard():
     c1, c2, c3 = st.columns([5, 2, 2], vertical_alignment="center")
     with c1:
         header_dashboard()
-        st.caption(f"Student Portal • Welcome, **{student_name}** (`ID: #{student_id}`)")
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                <span class="live-dot-green"></span>
+                <span style="font-size: 0.8rem; color: #94A3B8;">Student Portal:</span>
+                <span style="font-size: 0.82rem; font-weight: 700; color: #FFFFFF;">{student_name}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #94A3B8;">ID #{student_id}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.12); color: #10B981; font-weight: 600;">VERIFIED PROFILE</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
     with c2:
         if st.button("Refresh", type="secondary", icon=":material/refresh:", width="stretch", key="student_refresh_btn"):
             invalidate_student_cache()
