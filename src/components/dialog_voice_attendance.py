@@ -8,7 +8,7 @@ from src.components.dialog_attendance_results import show_attendance_result
 
 @st.dialog("Voice Attendance Session", width="large")
 def voice_attendance_dialog(selected_subject_id: int):
-    st.caption("Record classroom audio of students answering roll call or speaking in class. The AI will extract speaker embeddings and identify enrolled students.")
+    st.caption("Record classroom audio as students speak or answer roll call. SNAPCLASS will identify matching enrolled students instantly.")
 
     audio_data = st.audio_input("Record classroom roll call", key="voice_att_audio_input")
 
@@ -20,12 +20,12 @@ def voice_attendance_dialog(selected_subject_id: int):
             st.rerun()
 
     with col2:
-        if st.button("Analyze Audio & Take Attendance", width="stretch", type="primary", key="dlg_voice_analyze_btn"):
+        if st.button("Identify Voices & Take Attendance", width="stretch", type="primary", key="dlg_voice_analyze_btn"):
             if not audio_data:
                 st.warning("Please record audio before clicking Analyze.")
                 return
 
-            with st.spinner("Analyzing vocal frequencies and speaker profiles..."):
+            with st.spinner("Listening to voice recording and matching students..."):
                 try:
                     audio_bytes = audio_data.getvalue() if hasattr(audio_data, "getvalue") else audio_data.read()
                 except Exception as e:
@@ -44,5 +44,5 @@ def voice_attendance_dialog(selected_subject_id: int):
     # Render review table if voice analysis was completed
     if st.session_state.get("voice_attendance_results"):
         st.divider()
-        st.subheader("Vocal Identification Review")
+        st.subheader("Review Identified Students")
         show_attendance_result(st.session_state["voice_attendance_results"])

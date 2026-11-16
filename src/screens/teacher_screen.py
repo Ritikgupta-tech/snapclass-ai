@@ -296,8 +296,8 @@ def teacher_tab_take_attendance(subjects: List[Dict[str, Any]], teacher_id: int)
                 st.rerun()
 
         with c_run:
-            if st.button("Run Facial Recognition Analysis", type="primary", icon=":material/analytics:", width="stretch", key="run_face_analysis_btn"):
-                with st.spinner("Extracting facial embeddings and cross-referencing roster..."):
+            if st.button("Identify Present Students", type="primary", icon=":material/how_to_reg:", width="stretch", key="run_face_analysis_btn"):
+                with st.spinner("Scanning classroom photos and matching course roster..."):
                     success, msg, session_payload = prepare_face_attendance_session(selected_subject_id, images, teacher_id=teacher_id)
                     if success and session_payload:
                         st.session_state["active_attendance_session"] = session_payload

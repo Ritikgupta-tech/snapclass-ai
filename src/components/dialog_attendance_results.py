@@ -34,7 +34,7 @@ def show_attendance_result(session_draft: Dict[str, Any]):
         if mode == "Face":
             st.metric("Unknown Faces", session_draft.get("unknown_faces_count", 0))
         else:
-            st.metric("Utterances", session_draft.get("segments_processed", 0))
+            st.metric("Voice Check-Ins", session_draft.get("segments_processed", 0))
 
     if session_draft.get("unknown_faces_count", 0) > 0:
         st.warning(f"⚠️ {session_draft['unknown_faces_count']} face(s) in the photos were not recognized among enrolled students. Please review the roster below.")

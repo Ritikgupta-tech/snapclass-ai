@@ -60,15 +60,15 @@ def student_login_and_register_view():
         st.markdown(
             """
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 0.5rem;">
-                <span style="font-size: 1.25rem; font-weight: 700; color: #FFFFFF;">👤 Student FaceID Sign In</span>
+                <span style="font-size: 1.25rem; font-weight: 700; color: #FFFFFF;">👤 Student Face Sign In</span>
                 <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); color: #10B981;">
-                    <span class="live-dot-green"></span>BIOMETRIC VIEWFINDER ACTIVE
+                    <span class="live-dot-green"></span>CAMERA READY
                 </span>
             </div>
             """,
             unsafe_allow_html=True
         )
-        st.caption("Center your face in the camera view to authenticate using your registered biometric face profile.")
+        st.caption("Center your face in the camera view to sign in instantly.")
 
         photo_source = st.camera_input("Position face in the frame", key="student_faceid_camera")
 
@@ -80,11 +80,11 @@ def student_login_and_register_view():
                 is_valid, err_msg, np_img = validate_and_prepare_image(pil_img)
 
                 if is_valid and np_img is not None:
-                    with st.spinner("Analyzing facial geometry..."):
+                    with st.spinner("Checking your face profile..."):
                         encodings = get_face_embeddings(np_img)
 
                         if len(encodings) == 0:
-                            st.warning("⚠️ No face detected in frame. Please ensure proper lighting and face the camera.")
+                            st.warning("⚠️ No face detected. Please ensure your face is well lit and look directly at the camera.")
                         elif len(encodings) > 1:
                             st.warning("⚠️ Multiple faces detected. Please ensure only you are visible in the frame.")
                         else:
@@ -106,9 +106,9 @@ def student_login_and_register_view():
                                 else:
                                     st.error(msg)
                             elif sid is not None and status == "NEEDS_REVIEW":
-                                st.warning("⚠️ Face match confidence was borderline. For portal security, high confidence is required. Please face the camera directly with good lighting.")
+                                st.warning("⚠️ Face match was unclear. Please face the camera directly with good lighting and try again.")
                             else:
-                                st.info("Face not recognized in student registry. If you are a new student, please complete registration below.")
+                                st.info("Face not recognized. If you are a new student, please complete your profile registration below.")
                                 show_registration_form = True
             except Exception as e:
                 st.error(f"Error processing camera input: {e}")
@@ -124,16 +124,16 @@ def student_login_and_register_view():
     if show_registration_form:
         st.markdown("<div style='height: 1.5rem;'></div>", unsafe_allow_html=True)
         with st.container(border=True):
-            st.markdown("### 📝 Register Student Biometric Profile")
-            st.caption("Enter your legal name and enroll facial and optional voice references.")
+            st.markdown("### 📝 Register Student Profile")
+            st.caption("Enter your legal name and save your face and optional voice check-in references.")
 
             new_name = st.text_input("Full Name *", placeholder="e.g. Ritik Gupta", key="student_reg_name_input")
 
-            st.markdown("##### Step 1: Facial Snapshot")
-            st.caption("The camera snapshot above will be used to generate your 128-dimensional facial reference embedding.")
+            st.markdown("##### Step 1: Facial Photo")
+            st.caption("Your camera snapshot above will be securely converted into an encrypted digital signature. Your actual photo is never stored.")
 
-            st.markdown("##### Step 2: Optional Voice Profile")
-            st.caption("Enroll a voice reference to enable voice roll-call attendance.")
+            st.markdown("##### Step 2: Optional Voice Check-In")
+            st.caption("Record a short voice sample to enable voice-assisted roll calls.")
 
             audio_data = st.audio_input("Record phrase: 'I am present and ready for class'", key="student_reg_audio_input")
 
@@ -152,7 +152,7 @@ def student_login_and_register_view():
                     elif not photo_source:
                         st.warning("Please capture your face using the camera above.")
                     else:
-                        with st.spinner("Extracting biometric features..."):
+                        with st.spinner("Saving your profile securely..."):
                             try:
                                 pil_img = Image.open(photo_source)
                                 is_valid, _, np_img = validate_and_prepare_image(pil_img)

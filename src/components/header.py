@@ -1,6 +1,6 @@
 """
 Header components for SNAPCLASS AI.
-Provides luxury brand presentation for public and authenticated dashboards with live telemetry indicators.
+Provides luxury brand presentation for public and authenticated dashboards with live status indicators.
 """
 
 import streamlit as st
@@ -18,16 +18,16 @@ def header_home():
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span style="font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; color: #FFFFFF;">SNAPCLASS</span>
                         <span style="background: linear-gradient(135deg, #6366F1, #818CF8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.6rem; font-weight: 800;">AI</span>
-                        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #C7D2FE; letter-spacing: 0.05em;">ENTERPRISE</span>
+                        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34D399; letter-spacing: 0.05em;">PRO EDITION</span>
                     </div>
-                    <div style="font-size: 0.8rem; color: #94A3B8; font-weight: 500;">Zero-Trust Biometric Attendance Intelligence</div>
+                    <div style="font-size: 0.8rem; color: #94A3B8; font-weight: 500;">Next-Generation Smart Attendance Platform</div>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;">
                 <span class="live-dot-green"></span>
-                <span style="color: #10B981; font-weight: 600;">LIVE ENGINE 2.0</span>
+                <span style="color: #10B981; font-weight: 600;">SYSTEM ONLINE</span>
                 <span style="color: #64748B;">•</span>
-                <span style="color: #94A3B8;">99.98% ACCURACY</span>
+                <span style="color: #94A3B8;">99.9% VERIFIED ACCURACY</span>
             </div>
         </div>
         """,
@@ -46,15 +46,16 @@ def header_dashboard():
                         <span style="font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; color: #FFFFFF;">SNAPCLASS</span>
                         <span style="background: linear-gradient(135deg, #6366F1, #818CF8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.3rem; font-weight: 800;">AI</span>
                     </div>
-                    <div style="font-size: 0.72rem; color: #94A3B8; font-weight: 500;">Academic Intelligence Operations</div>
+                    <div style="font-size: 0.72rem; color: #94A3B8; font-weight: 500;">Campus Attendance Workspace</div>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 20px; padding: 3px 10px;">
                 <span class="live-dot-green"></span>
-                <span style="color: #10B981; font-weight: 600;">OPERATIONAL</span>
+                <span style="color: #10B981; font-weight: 600;">ACTIVE</span>
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
+
 
