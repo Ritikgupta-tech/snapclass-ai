@@ -41,5 +41,7 @@ jobs:
           (pip install --no-cache-dir dlib && pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt)
 
       - name: Run Pytest Suite
+        env:
+          PYTHONPATH: .
         run: |
-          pytest -v --tb=short
+          python -m pytest -v --tb=short
