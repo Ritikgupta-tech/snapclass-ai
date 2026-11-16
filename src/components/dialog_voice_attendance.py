@@ -1,70 +1,48 @@
+"""
+Dialog for recording classroom audio and executing voice recognition attendance.
+"""
+
 import streamlit as st
-
-from src.pipelines.voice_pipeline import process_bulk_audio
-
-from src.database.config import supabase
-
-import pandas as pd
-
-
+from src.services.attendance_service import prepare_voice_attendance_session
 from src.components.dialog_attendance_results import show_attendance_result
-from datetime import datetime
-@st.dialog('Voice Attendance')
-def voice_attendance_dialog(selected_subject_id):
-    st.write('Record audio of students saying I am present. Then AI will recognize the students')
 
+@st.dialog("Voice Attendance Session", width="large")
+def voice_attendance_dialog(selected_subject_id: int):
+    st.caption("Record classroom audio of students answering roll call or speaking in class. The AI will extract speaker embeddings and identify enrolled students.")
 
-    audio_data = None
+    audio_data = st.audio_input("Record classroom roll call", key="voice_att_audio_input")
 
-    audio_data = st.audio_input("Record classroom audio")
+    col1, col2 = st.columns(2)
 
-    if st.button('Analyze Audio', width='stretch', type='primary'):
-        with st.spinner('Prcessing Audio data'):
-            enrolled_res = supabase.table('subject_students').select("*, students(*)").eq('subject_id',selected_subject_id ).execute()
-            enrolled_students = enrolled_res.data
+    with col1:
+        if st.button("Cancel", width="stretch", key="dlg_voice_cancel_btn"):
+            st.session_state.voice_attendance_results = None
+            st.rerun()
 
-            if not enrolled_students:
-                st.warning('No students enrolled in this course')
+    with col2:
+        if st.button("Analyze Audio & Take Attendance", width="stretch", type="primary", key="dlg_voice_analyze_btn"):
+            if not audio_data:
+                st.warning("Please record audio before clicking Analyze.")
                 return
-            candidates_dict = {
-                s['students']['student_id'] : s['students']['voice_embedding'] 
-                for s in enrolled_students if s['students'].get('voice_embedding')
-            }
 
-            if not candidates_dict:
-                st.error('No enrolled students have voice profiles registerd')
-                return
-            
-            audio_bytes = audio_data.read()
+            with st.spinner("Analyzing vocal frequencies and speaker profiles..."):
+                try:
+                    audio_bytes = audio_data.getvalue() if hasattr(audio_data, "getvalue") else audio_data.read()
+                except Exception as e:
+                    st.error(f"Could not read audio stream: {e}")
+                    return
 
-            detected_scores = process_bulk_audio(audio_bytes, candidates_dict)
+                teacher_data = st.session_state.get("teacher_data", {})
+                teacher_id = teacher_data.get("teacher_id")
+                success, msg, session_payload = prepare_voice_attendance_session(selected_subject_id, audio_bytes, teacher_id=teacher_id)
+                if success and session_payload:
+                    st.session_state["voice_attendance_results"] = session_payload
+                    st.rerun()
+                else:
+                    st.error(msg)
 
-            results, attendance_to_log  = [], []
-
-            current_timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-
-
-            for node in enrolled_students:
-                student = node['students']
-                score  = detected_scores.get(student['student_id'], 0.0)
-                is_present= bool(score>0)
-
-                results.append({
-                    "Name": student['name'],
-                    "ID": student['student_id'],
-                    "Source": score if is_present else "-",
-                    "Status": "✅ Present" if is_present else "❌ Absent"
-                })
-
-                attendance_to_log.append({
-                    'student_id': student['student_id'],
-                    'subject_id': selected_subject_id,
-                    'timestamp': current_timestamp,
-                    'is_present': bool(is_present)
-                })
-            st.session_state.voice_attendance_results = (pd.DataFrame(results), attendance_to_log)
-
-    if st.session_state.get('voice_attendance_results'):
+    # Render review table if voice analysis was completed
+    if st.session_state.get("voice_attendance_results"):
         st.divider()
-        df_results, logs = st.session_state.voice_attendance_results
-        show_attendance_result(df_results, logs)
+        st.subheader("Vocal Identification Review")
+        show_attendance_result(st.session_state["voice_attendance_results"])

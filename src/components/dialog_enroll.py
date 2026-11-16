@@ -1,29 +1,43 @@
+"""
+Dialog for students to manually join a subject using a subject code.
+"""
+
 import streamlit as st
-from src.database.db import enroll_student_to_subject
-from src.database.config import supabase
-
 import time
-
+from src.services.subject_service import enroll_student_by_code
 
 @st.dialog("Enroll in Subject")
 def enroll_dialog():
-    st.write('Enter the subject code provided by your teacher to enroll')
-    join_code = st.text_input('Subject Code', placeholder='Eg. CS101')
+    st.caption("Enter the unique subject code shared by your instructor to join the course roster.")
 
-    if st.button('Enroll now', type='primary', width='stretch'):
-        if join_code:
-            res = supabase.table('subjects').select('subject_id, name, subject_code').eq('subject_code', join_code).execute()
-            if res.data:
-                subject = res.data[0]
-                student_id = st.session_state.student_data['student_id']
+    student_data = st.session_state.get("student_data")
+    if not student_data or "student_id" not in student_data:
+        st.error("You must be logged in as a student to enroll in subjects.")
+        if st.button("Close", key="dlg_enroll_unauth_close"):
+            st.rerun()
+        return
 
-                check = supabase.table('subject_students').select('*').eq('subject_id', subject['subject_id']).eq('student_id', student_id).execute()
-                if check.data:
-                    st.warning('You are already enrolled in this program')
-                else:
-                    enroll_student_to_subject(student_id, subject['subject_id'])
-                    st.success('Succesfully enrolled!')
+    student_id = student_data["student_id"]
+    join_code = st.text_input("Subject Code *", placeholder="e.g. CS101", key="dlg_manual_join_code")
+
+    st.divider()
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Cancel", width="stretch", key="dlg_enroll_cancel"):
+            st.rerun()
+
+    with col2:
+        if st.button("Join Subject", type="primary", width="stretch", key="dlg_enroll_submit"):
+            if not join_code:
+                st.warning("Please enter a subject code.")
+            else:
+                success, msg, sub = enroll_student_by_code(student_id, join_code)
+                if success:
+                    st.session_state.pop("_cached_student_dashboard", None)
+                    st.session_state.pop("_cached_teacher_subjects", None)
+                    st.success(msg)
                     time.sleep(1)
                     st.rerun()
-        else:
-            st.warning('Please enter a subject code')
+                else:
+                    st.error(msg)

@@ -5,7 +5,10 @@
 .DS_Store
 __pycache__/
 venv/
-.streamlit/
+.pytest_cache/
+.streamlit/*
+!.streamlit/config.toml
+!.streamlit/secrets.toml.example
 
 dist/
 .agent/

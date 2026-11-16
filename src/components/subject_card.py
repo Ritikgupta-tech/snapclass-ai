@@ -1,22 +1,46 @@
+"""
+Reusable subject presentation card component for SNAPCLASS AI.
+Uses trading-terminal inspired card styling, monospace badges, and high-contrast metrics.
+"""
+
+from typing import List, Tuple, Any, Callable, Optional
 import streamlit as st
-def subject_card(name, code, section, stats=None, footer_callback=None):
-    html = f"""
-        <div style="background:white; border-left: 8px solid #EB459E; padding:25px; border-radius: 20px; border: 1px solid black; margin-bottom:20px;">
-        <h3 style="margin:0; color: #1e293b; font-size: 1.5rem ">{name}</h3>
-        <p style="color:#64748b; margin:10px 0;">Code : <span style="background:#E0E3FF; color:#5865F2; padding:2px 8px; border-radius:5px;">{code} </span> | Section : {section}</p>
-        
-        """
-    
-    if stats:
-        html+= """
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        """
-        for icon, label, value in stats:
-            html+= f'<div style="background: #EB459E10; padding:5px 12px; border-radius:12px; font-size:0.9rem">{icon} <b>{value}</b> {label} </div>'
-        
-        html+= "</div>"
 
-    st.markdown(html, unsafe_allow_html=True)
+def subject_card(
+    name: str,
+    code: str,
+    section: str,
+    stats: Optional[List[Tuple[str, str, Any]]] = None,
+    footer_callback: Optional[Callable[[], None]] = None
+):
+    """
+    Renders a luxury, institutional card for academic course subjects.
+    """
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 0.75rem;">
+                <div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; letter-spacing: -0.01em;">{name}</div>
+                    <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 2px;">
+                        Section: <span style="color: #E2E8F0; font-weight: 600;">{section}</span>
+                    </div>
+                </div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); color: #C7D2FE; font-weight: 600; letter-spacing: 0.05em;">
+                    {code}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-    if footer_callback:
-        footer_callback()
+        if stats:
+            stat_cols = st.columns(len(stats))
+            for idx, (icon, label, value) in enumerate(stats):
+                with stat_cols[idx]:
+                    st.metric(label=f"{icon} {label}", value=value)
+
+        if footer_callback:
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+            footer_callback()
+

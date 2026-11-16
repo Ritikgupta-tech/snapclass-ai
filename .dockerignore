@@ -1,0 +1,14 @@
+.git
+.gitignore
+.agents/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.streamlit/secrets.toml
+tests/
+scratch/
+docs/PROJECT_AUDIT.md
