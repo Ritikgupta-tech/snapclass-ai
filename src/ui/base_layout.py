@@ -18,6 +18,11 @@ def style_base_layout():
             /* --- Global Typography & Smooth Rendering --- */
             @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+            .stApp {
+                background-color: #070A10 !important;
+                color: #F8FAFC !important;
+            }
+
             html, body, [class*="css"] {
                 font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
                 -webkit-font-smoothing: antialiased;

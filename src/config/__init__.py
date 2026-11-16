@@ -1,0 +1,1 @@
+"""SNAPCLASS AI — Configuration."""

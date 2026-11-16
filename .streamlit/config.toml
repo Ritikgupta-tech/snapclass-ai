@@ -9,6 +9,12 @@ maxUploadSize = 25
 gatherUsageStats = false
 
 [theme]
+base = "dark"
+primaryColor = "#6366F1"
+backgroundColor = "#070A10"
+secondaryBackgroundColor = "#0F1523"
+textColor = "#F8FAFC"
+borderColor = "#1E293B"
 showWidgetBorder = true
 showSidebarBorder = true
 baseRadius = "10px"
