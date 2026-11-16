@@ -80,11 +80,10 @@ def teacher_screen():
 # --- Authentication Views ---
 
 def teacher_screen_login():
-    c1, c2 = st.columns([3, 1], vertical_alignment="center")
-    with c1:
-        header_dashboard()
-    with c2:
-        if st.button("Return to Home", type="secondary", key="teacher_login_home_btn"):
+    header_dashboard()
+    col_nav, _ = st.columns([2, 5], vertical_alignment="center")
+    with col_nav:
+        if st.button("← Return to Home", type="secondary", width="stretch", key="teacher_login_home_btn"):
             st.session_state["login_type"] = None
             st.rerun()
 
@@ -117,11 +116,10 @@ def teacher_screen_login():
     footer_dashboard()
 
 def teacher_screen_register():
-    c1, c2 = st.columns([3, 1], vertical_alignment="center")
-    with c1:
-        header_dashboard()
-    with c2:
-        if st.button("Return to Home", type="secondary", key="teacher_reg_home_btn"):
+    header_dashboard()
+    col_nav, _ = st.columns([2, 5], vertical_alignment="center")
+    with col_nav:
+        if st.button("← Return to Home", type="secondary", width="stretch", key="teacher_reg_home_btn"):
             st.session_state["login_type"] = None
             st.rerun()
 
@@ -162,16 +160,17 @@ def teacher_dashboard():
     teacher_data = st.session_state["teacher_data"]
     teacher_id = teacher_data["teacher_id"]
 
-    # Top Navigation Bar
+    header_dashboard()
+
+    # User Meta & Quick Actions Bar
     c1, c2, c3 = st.columns([5, 2, 2], vertical_alignment="center")
     with c1:
-        header_dashboard()
         st.markdown(
             f"""
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
                 <span class="live-dot-indigo"></span>
-                <span style="font-size: 0.8rem; color: #94A3B8;">Faculty Session:</span>
-                <span style="font-size: 0.82rem; font-weight: 700; color: #FFFFFF;">{teacher_data.get('name', 'Instructor')}</span>
+                <span style="font-size: 0.82rem; color: #94A3B8;">Faculty Session:</span>
+                <span style="font-size: 0.86rem; font-weight: 700; color: #FFFFFF;">{teacher_data.get('name', 'Instructor')}</span>
                 <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #94A3B8;">@{teacher_data.get('username')}</span>
             </div>
             """,
@@ -186,6 +185,8 @@ def teacher_dashboard():
             invalidate_teacher_cache()
             logout()
             st.rerun()
+
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
     # Overview Metrics Row (served from session cache)
     subjects = get_cached_teacher_subjects(teacher_id)

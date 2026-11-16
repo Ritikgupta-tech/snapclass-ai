@@ -46,11 +46,10 @@ def student_screen():
 # --- Student Login & Biometric Registration View ---
 
 def student_login_and_register_view():
-    c1, c2 = st.columns([3, 1], vertical_alignment="center")
-    with c1:
-        header_dashboard()
-    with c2:
-        if st.button("Return to Home", type="secondary", key="student_login_home_btn"):
+    header_dashboard()
+    col_nav, _ = st.columns([2, 5], vertical_alignment="center")
+    with col_nav:
+        if st.button("← Return to Home", type="secondary", width="stretch", key="student_login_home_btn"):
             st.session_state["login_type"] = None
             st.rerun()
 
@@ -213,16 +212,17 @@ def student_dashboard():
     student_id = student_data["student_id"]
     student_name = student_data.get("name", "Student")
 
-    # Header with refresh and sign out
+    header_dashboard()
+
+    # User Meta & Quick Actions Bar
     c1, c2, c3 = st.columns([5, 2, 2], vertical_alignment="center")
     with c1:
-        header_dashboard()
         st.markdown(
             f"""
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
                 <span class="live-dot-green"></span>
-                <span style="font-size: 0.8rem; color: #94A3B8;">Student Portal:</span>
-                <span style="font-size: 0.82rem; font-weight: 700; color: #FFFFFF;">{student_name}</span>
+                <span style="font-size: 0.82rem; color: #94A3B8;">Student Portal:</span>
+                <span style="font-size: 0.86rem; font-weight: 700; color: #FFFFFF;">{student_name}</span>
                 <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(255, 255, 255, 0.06); color: #94A3B8;">ID #{student_id}</span>
                 <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: rgba(16, 185, 129, 0.12); color: #10B981; font-weight: 600;">VERIFIED PROFILE</span>
             </div>
@@ -238,6 +238,8 @@ def student_dashboard():
             invalidate_student_cache()
             logout()
             st.rerun()
+
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
     # Load Enrolled Subjects & Overall Attendance (served from session cache)
     subjects, summary = get_cached_student_dashboard_data(student_id)

@@ -1,5 +1,5 @@
 """
-Footer components for SNAPCLASS AI.
+Footer components for SNAPCLASS.
 Provides institutional-grade footer with privacy protection markers and system status.
 """
 
@@ -13,7 +13,7 @@ def footer_home():
     st.markdown("""
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 1rem 0; font-size: 0.8rem; color: #64748B;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-weight: 700; color: #94A3B8;">SNAPCLASS AI</span>
+                <span style="font-weight: 700; color: #94A3B8;">SNAPCLASS</span>
                 <span>•</span>
                 <span>Automated Classroom Attendance SaaS</span>
                 <span>•</span>
@@ -38,7 +38,7 @@ def footer_dashboard():
     st.markdown("""
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; padding: 0.75rem 0; font-size: 0.78rem; color: #64748B;">
             <div>
-                <span style="font-weight: 600; color: #94A3B8;">SNAPCLASS AI Workspace</span>
+                <span style="font-weight: 600; color: #94A3B8;">SNAPCLASS Workspace</span>
                 <span style="margin: 0 8px;">•</span>
                 <span>Student privacy protected • Encrypted records scoped to course rosters</span>
             </div>
@@ -48,5 +48,3 @@ def footer_dashboard():
             </div>
         </div>
     """, unsafe_allow_html=True)
-
-

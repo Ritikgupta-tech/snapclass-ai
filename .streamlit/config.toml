@@ -1,5 +1,6 @@
-# SNAPCLASS AI — Premium Streamlit Configuration
+# SNAPCLASS — Premium Streamlit Configuration
 # Inspired by Linear, Stripe, and Vercel design systems
+# Single locked dark appearance ensures consistent rendering across all devices & browsers
 
 [server]
 headless = true
@@ -29,15 +30,7 @@ baseFontWeight = 400
 headingFontSizes = ["34px", "26px", "20px", "17px", "15px", "14px"]
 headingFontWeights = [700, 600, 600, 600, 600, 600]
 linkUnderline = false
-
-[theme.light]
-primaryColor = "#6366F1"
-backgroundColor = "#070A10"
-secondaryBackgroundColor = "#0F1523"
 codeBackgroundColor = "#1E293B"
-textColor = "#F8FAFC"
-linkColor = "#818CF8"
-borderColor = "#1E293B"
 codeTextColor = "#E2E8F0"
 grayColor = "#94A3B8"
 blueColor = "#60A5FA"
@@ -47,26 +40,6 @@ yellowColor = "#F59E0B"
 orangeColor = "#F97316"
 violetColor = "#6366F1"
 chartCategoricalColors = ["#6366F1", "#22D3EE", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"]
-dataframeBorderColor = "#1E293B"
-dataframeHeaderBackgroundColor = "#111827"
-
-[theme.dark]
-primaryColor = "#6366F1"
-backgroundColor = "#090D16"
-secondaryBackgroundColor = "#111827"
-codeBackgroundColor = "#1E293B"
-textColor = "#F8FAFC"
-linkColor = "#818CF8"
-borderColor = "#1E293B"
-codeTextColor = "#E2E8F0"
-grayColor = "#94A3B8"
-blueColor = "#60A5FA"
-greenColor = "#34D399"
-redColor = "#F87171"
-yellowColor = "#FBBF24"
-orangeColor = "#FB923C"
-violetColor = "#A78BFA"
-chartCategoricalColors = ["#6366F1", "#22D3EE", "#34D399", "#FBBF24", "#F87171", "#C084FC"]
 dataframeBorderColor = "#1E293B"
 dataframeHeaderBackgroundColor = "#111827"
 dataframeHeaderTextColor = "#F8FAFC"

@@ -51,7 +51,7 @@ def show_attendance_result(session_draft: Dict[str, Any]):
         column_config={
             "Name": st.column_config.TextColumn("Student Name", disabled=True),
             "Is Present": st.column_config.CheckboxColumn("Present?", help="Toggle student presence", default=False),
-            "Status": st.column_config.TextColumn("AI Suggestion", disabled=True),
+            "Status": st.column_config.TextColumn("Detected Status", disabled=True),
             "Confidence": st.column_config.TextColumn("Confidence", disabled=True),
             "Detected In": st.column_config.TextColumn("Source", disabled=True),
         },

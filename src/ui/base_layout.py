@@ -1,5 +1,5 @@
 """
-SNAPCLASS AI — Luxury UI/UX Design System & Global Layout Engine.
+SNAPCLASS — Luxury UI/UX Design System & Global Layout Engine.
 Inspired by modern high-end trading terminals, Linear, Stripe, and Apple design aesthetics.
 Features live animations, glowing glassmorphism, responsive telemetry tickers, and micro-interactions.
 No AI jargon — completely user-friendly, crystal-clear, and professional.
@@ -45,15 +45,32 @@ def style_base_layout():
                 background: #334155;
             }
 
-            /* --- Luxury Top Chrome & Navigation Header --- */
-            header[data-testid="stHeader"] {
-                background: rgba(7, 10, 16, 0.9) !important;
-                backdrop-filter: blur(12px) !important;
+            /* --- Luxury Top Chrome & Navigation Header (Sticky Dark Glass) --- */
+            header[data-testid="stHeader"],
+            .stAppHeader {
+                background: rgba(7, 10, 16, 0.95) !important;
+                background-color: rgba(7, 10, 16, 0.95) !important;
+                backdrop-filter: blur(14px) !important;
+                -webkit-backdrop-filter: blur(14px) !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+                color: #F8FAFC !important;
             }
 
-            /* --- Luxury Container & Page Geometry (No Overlap with Chrome) --- */
+            header[data-testid="stHeader"] *,
+            .stAppHeader * {
+                color: #94A3B8 !important;
+                fill: #94A3B8 !important;
+            }
+
+            header[data-testid="stHeader"] button:hover *,
+            .stAppHeader button:hover * {
+                color: #FFFFFF !important;
+                fill: #FFFFFF !important;
+            }
+
+            /* --- Luxury Container & Page Geometry (Eliminating Overlap with Chrome) --- */
             .block-container {
-                padding-top: 5.25rem !important;
+                padding-top: 5.5rem !important;
                 padding-bottom: 3.5rem !important;
                 max-width: 1200px !important;
             }
@@ -84,16 +101,6 @@ def style_base_layout():
                 100% {
                     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
                 }
-            }
-
-            @keyframes badge-shimmer {
-                0% { background-position: -200% 0; }
-                100% { background-position: 200% 0; }
-            }
-
-            @keyframes subtle-float {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-4px); }
             }
 
             /* --- Live Status Dots --- */
@@ -214,81 +221,100 @@ def style_base_layout():
                 transform: translateY(-2px) !important;
             }
 
-            /* --- High-End Buttons (Primary, Secondary, Tertiary) --- */
-            button[data-testid="baseButton-primary"],
+            /* --- Streamlit Buttons (Primary, Secondary, Tertiary) --- */
+            /* Universal button baseline */
+            div[data-testid="stButton"] > button,
+            button[data-testid*="Button"],
+            .stButton > button {
+                border-radius: 10px !important;
+                padding: 0.6rem 1.4rem !important;
+                font-weight: 600 !important;
+                letter-spacing: -0.01em !important;
+                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            }
+
+            /* Primary Buttons - Indigo Glow */
+            div[data-testid="stButton"] > button[kind="primary"],
             button[kind="primary"],
+            button[data-testid*="primary"],
             .stButton > button[kind="primary"] {
                 background: linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #4338CA 100%) !important;
                 background-color: #6366F1 !important;
                 border: 1px solid rgba(255, 255, 255, 0.22) !important;
-                border-radius: 10px !important;
                 color: #FFFFFF !important;
-                padding: 0.6rem 1.4rem !important;
-                font-weight: 600 !important;
-                letter-spacing: -0.01em !important;
+                -webkit-text-fill-color: #FFFFFF !important;
                 box-shadow: 0 4px 16px rgba(79, 70, 229, 0.4) !important;
-                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
             }
 
-            button[data-testid="baseButton-primary"]:hover,
+            div[data-testid="stButton"] > button[kind="primary"]:hover,
             button[kind="primary"]:hover,
+            button[data-testid*="primary"]:hover,
             .stButton > button[kind="primary"]:hover {
-                transform: translateY(-2px) !important;
-                box-shadow: 0 6px 24px rgba(99, 102, 241, 0.6) !important;
+                background: linear-gradient(135deg, #4338CA 0%, #4F46E5 50%, #6366F1 100%) !important;
                 border-color: rgba(255, 255, 255, 0.4) !important;
-                color: #FFFFFF !important;
+                box-shadow: 0 6px 24px rgba(99, 102, 241, 0.6) !important;
+                transform: translateY(-2px) !important;
             }
 
-            button[data-testid="baseButton-secondary"],
+            /* Secondary Buttons (Refresh, Sign Out, Return, Unenroll, etc.) */
+            div[data-testid="stButton"] > button:not([kind="primary"]),
+            div[data-testid="stButton"] > button[kind="secondary"],
             button[kind="secondary"],
-            .stButton > button[kind="secondary"],
-            .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]) {
-                background-color: #141C2E !important;
+            button[data-testid*="secondary"],
+            .stButton > button:not([kind="primary"]),
+            .stButton > button[kind="secondary"] {
                 background: #141C2E !important;
+                background-color: #141C2E !important;
                 border: 1px solid #2B3852 !important;
-                border-radius: 10px !important;
                 color: #F8FAFC !important;
-                padding: 0.6rem 1.4rem !important;
-                font-weight: 600 !important;
+                -webkit-text-fill-color: #F8FAFC !important;
                 box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
-                transition: all 0.2s ease !important;
             }
 
-            button[data-testid="baseButton-secondary"]:hover,
+            div[data-testid="stButton"] > button:not([kind="primary"]):hover,
+            div[data-testid="stButton"] > button[kind="secondary"]:hover,
             button[kind="secondary"]:hover,
-            .stButton > button[kind="secondary"]:hover,
-            .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]):hover {
-                background-color: #1C2740 !important;
-                background: #1C2740 !important;
+            button[data-testid*="secondary"]:hover,
+            .stButton > button:not([kind="primary"]):hover,
+            .stButton > button[kind="secondary"]:hover {
+                background: #1E293B !important;
+                background-color: #1E293B !important;
                 border-color: #6366F1 !important;
                 color: #FFFFFF !important;
+                -webkit-text-fill-color: #FFFFFF !important;
                 box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25) !important;
                 transform: translateY(-1px) !important;
             }
 
-            button[data-testid="baseButton-tertiary"],
+            /* Tertiary Buttons (Text-only or subtle action triggers) */
+            div[data-testid="stButton"] > button[kind="tertiary"],
             button[kind="tertiary"],
-            .stButton > button[kind="tertiary"] {
+            button[data-testid*="tertiary"] {
                 background: transparent !important;
                 background-color: transparent !important;
                 border: 1px solid rgba(255, 255, 255, 0.12) !important;
                 border-radius: 8px !important;
                 color: #C7D2FE !important;
+                -webkit-text-fill-color: #C7D2FE !important;
                 font-weight: 500 !important;
                 transition: all 0.2s ease !important;
             }
 
-            button[data-testid="baseButton-tertiary"]:hover,
+            div[data-testid="stButton"] > button[kind="tertiary"]:hover,
             button[kind="tertiary"]:hover,
-            .stButton > button[kind="tertiary"]:hover {
+            button[data-testid*="tertiary"]:hover {
                 background: rgba(99, 102, 241, 0.12) !important;
                 border-color: #818CF8 !important;
                 color: #FFFFFF !important;
+                -webkit-text-fill-color: #FFFFFF !important;
             }
 
-            /* Ensure all button text and icon spans inherit bright legible color */
-            button * {
+            /* Ensure all button text, icons, and SVG inherit bright legible color */
+            div[data-testid="stButton"] button *,
+            button[data-testid*="Button"] *,
+            .stButton > button * {
                 color: inherit !important;
+                -webkit-text-fill-color: currentColor !important;
                 fill: currentColor !important;
             }
 
@@ -305,9 +331,11 @@ def style_base_layout():
 
             div[data-testid="stMetricLabel"],
             div[data-testid="stMetricLabel"] *,
+            div[data-testid="stMetricLabel"] p,
+            div[data-testid="stMetricLabel"] span,
             .stMetric label,
             .stMetric label * {
-                font-size: 0.76rem !important;
+                font-size: 0.74rem !important;
                 font-weight: 600 !important;
                 text-transform: uppercase !important;
                 letter-spacing: 0.05em !important;
@@ -317,19 +345,31 @@ def style_base_layout():
 
             div[data-testid="stMetricValue"],
             div[data-testid="stMetricValue"] *,
+            div[data-testid="stMetricValue"] > div,
+            div[data-testid="stMetricValue"] p,
+            div[data-testid="stMetricValue"] span,
             .stMetric [data-testid="stMetricValue"],
             .stMetric [data-testid="stMetricValue"] * {
                 font-family: 'JetBrains Mono', monospace !important;
                 font-size: 1.65rem !important;
                 font-weight: 700 !important;
-                letter-spacing: -0.03em !important;
+                letter-spacing: -0.02em !important;
                 color: #38BDF8 !important;
                 -webkit-text-fill-color: #38BDF8 !important;
             }
 
+            div[data-testid="stMetricDelta"],
+            div[data-testid="stMetricDelta"] * {
+                font-family: 'JetBrains Mono', monospace !important;
+                font-weight: 600 !important;
+            }
+
             /* High contrast inside subject cards */
             div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"],
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"] * {
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"] *,
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"] > div,
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"] p,
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stMetricValue"] span {
                 color: #10B981 !important;
                 -webkit-text-fill-color: #10B981 !important;
             }
@@ -368,9 +408,10 @@ def style_base_layout():
             /* --- Responsive Mobile & Tablet Breakpoints --- */
             @media (max-width: 768px) {
                 .block-container {
-                    padding-top: 4.5rem !important;
-                    padding-left: 1rem !important;
-                    padding-right: 1rem !important;
+                    padding-top: 5rem !important;
+                    padding-left: 0.85rem !important;
+                    padding-right: 0.85rem !important;
+                    padding-bottom: 2.5rem !important;
                 }
                 .hero-title-gradient {
                     font-size: 1.95rem !important;
@@ -387,12 +428,12 @@ def style_base_layout():
                     font-size: 0.72rem;
                     padding: 0.75rem 1rem;
                 }
-                /* Flexible 2x2 wrapping for metrics on mobile screens */
-                div[data-testid="stHorizontalBlock"] {
+                /* Flexible 2x2 wrapping for metrics on tablet/mobile screens */
+                div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) {
                     flex-wrap: wrap !important;
                     gap: 12px !important;
                 }
-                div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div[data-testid="column"] {
                     min-width: calc(50% - 8px) !important;
                     flex: 1 1 calc(50% - 8px) !important;
                 }
@@ -402,7 +443,7 @@ def style_base_layout():
                 .hero-title-gradient {
                     font-size: 1.65rem !important;
                 }
-                div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                div[data-testid="stHorizontalBlock"]:has(div[data-testid="stMetric"]) > div[data-testid="column"] {
                     min-width: 100% !important;
                     flex: 1 1 100% !important;
                 }
@@ -447,5 +488,3 @@ def style_background_home():
 def style_background_dashboard():
     """Retained for backward compatibility without garish color overrides."""
     pass
-
-
