@@ -45,9 +45,15 @@ def style_base_layout():
                 background: #334155;
             }
 
-            /* --- Luxury Container & Page Geometry --- */
+            /* --- Luxury Top Chrome & Navigation Header --- */
+            header[data-testid="stHeader"] {
+                background: rgba(7, 10, 16, 0.9) !important;
+                backdrop-filter: blur(12px) !important;
+            }
+
+            /* --- Luxury Container & Page Geometry (No Overlap with Chrome) --- */
             .block-container {
-                padding-top: 1.25rem !important;
+                padding-top: 5.25rem !important;
                 padding-bottom: 3.5rem !important;
                 max-width: 1200px !important;
             }
@@ -277,9 +283,9 @@ def style_base_layout():
             /* --- Responsive Mobile & Tablet Breakpoints --- */
             @media (max-width: 768px) {
                 .block-container {
-                    padding-top: 0.85rem !important;
-                    padding-left: 0.85rem !important;
-                    padding-right: 0.85rem !important;
+                    padding-top: 4.5rem !important;
+                    padding-left: 1rem !important;
+                    padding-right: 1rem !important;
                 }
                 .hero-title-gradient {
                     font-size: 1.95rem !important;

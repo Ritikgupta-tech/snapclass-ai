@@ -11,7 +11,7 @@ def header_home():
     """Header for public landing page with live status indicator."""
     st.markdown(
         f"""
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-top: 0.5rem; margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
             <div style="display: flex; align-items: center; gap: 14px;">
                 <img src="{LOGO_URL}" style="height: 52px; width: 52px; object-fit: contain; border-radius: 12px; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);" alt="SNAPCLASS AI Logo" />
                 <div style="text-align: left;">
@@ -38,7 +38,7 @@ def header_dashboard():
     """Header for teacher and student dashboards with live status telemetry."""
     st.markdown(
         f"""
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 0.5rem; margin-bottom: 0.75rem;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <img src="{LOGO_URL}" style="height: 42px; width: 42px; object-fit: contain; border-radius: 10px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.2);" alt="Logo" />
                 <div style="text-align: left;">
