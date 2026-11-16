@@ -1,6 +1,7 @@
 """
 Database Access Layer for SNAPCLASS AI.
-Provides hardened queries, safe column selection, and referential validation.
+Provides hardened queries, safe column selection, referential validation,
+and defensive guards against uninitialized clients.
 """
 
 from typing import List, Dict, Any, Optional
@@ -28,12 +29,18 @@ def check_pass(pwd: str, hashed: str) -> bool:
 
 def check_teacher_exists(username: str) -> bool:
     """Check if a teacher with the given username already exists."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return False
     clean_username = username.strip().lower()
     response = supabase.table("teachers").select("teacher_id").eq("username", clean_username).execute()
     return bool(response.data and len(response.data) > 0)
 
 def create_teacher(username: str, password: str, name: str) -> Optional[Dict[str, Any]]:
     """Create a new teacher record."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return None
     clean_username = username.strip().lower()
     clean_name = name.strip()
     data = {
@@ -54,6 +61,9 @@ def teacher_login(username: str, password: str) -> Optional[Dict[str, Any]]:
     Authenticate teacher credentials.
     Returns safe teacher dict without password hash on success, or None on failure.
     """
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return None
     clean_username = username.strip().lower()
     response = supabase.table("teachers").select("teacher_id, username, password, name").eq("username", clean_username).execute()
     if response.data and len(response.data) > 0:
@@ -66,6 +76,9 @@ def teacher_login(username: str, password: str) -> Optional[Dict[str, Any]]:
 
 def get_teacher_by_id(teacher_id: int) -> Optional[Dict[str, Any]]:
     """Fetch safe teacher profile by ID."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return None
     response = supabase.table("teachers").select("teacher_id, username, name").eq("teacher_id", teacher_id).execute()
     return response.data[0] if response.data else None
 
@@ -76,18 +89,27 @@ def get_all_students(include_embeddings: bool = False) -> List[Dict[str, Any]]:
     Fetch all students. By default, omits heavy biometric embeddings
     to prevent memory bloat and sensitive data exposure.
     """
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     columns = "student_id, name, face_embedding, voice_embedding" if include_embeddings else "student_id, name"
     response = supabase.table("students").select(columns).execute()
     return response.data or []
 
 def get_student_by_id(student_id: int, include_embeddings: bool = False) -> Optional[Dict[str, Any]]:
     """Fetch student by ID with or without embeddings."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return None
     columns = "student_id, name, face_embedding, voice_embedding" if include_embeddings else "student_id, name"
     response = supabase.table("students").select(columns).eq("student_id", student_id).execute()
     return response.data[0] if response.data else None
 
 def create_student(new_name: str, face_embedding: Optional[List[float]] = None, voice_embedding: Optional[List[float]] = None) -> List[Dict[str, Any]]:
     """Register a new student with biometric vectors."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     data = {
         "name": new_name.strip(),
         "face_embedding": face_embedding,
@@ -105,17 +127,26 @@ def create_student(new_name: str, face_embedding: Optional[List[float]] = None, 
 
 def get_subject_by_code(subject_code: str) -> Optional[Dict[str, Any]]:
     """Fetch subject record by subject code."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return None
     clean_code = subject_code.strip().upper()
     response = supabase.table("subjects").select("subject_id, subject_code, name, section, teacher_id").eq("subject_code", clean_code).execute()
     return response.data[0] if response.data else None
 
 def get_subject_by_id(subject_id: int) -> Optional[Dict[str, Any]]:
     """Fetch subject record by primary key."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return None
     response = supabase.table("subjects").select("subject_id, subject_code, name, section, teacher_id").eq("subject_id", subject_id).execute()
     return response.data[0] if response.data else None
 
 def create_subject(subject_code: str, name: str, section: str, teacher_id: int) -> List[Dict[str, Any]]:
     """Create a new subject assigned to a teacher."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     data = {
         "subject_code": subject_code.strip().upper(),
         "name": name.strip(),
@@ -130,6 +161,9 @@ def get_teacher_subjects(teacher_id: int) -> List[Dict[str, Any]]:
     Fetch all subjects created by a specific teacher, along with total student enrollment count
     and distinct attendance sessions.
     """
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     response = supabase.table("subjects").select(
         "subject_id, subject_code, name, section, teacher_id, subject_students(count), attendance_logs(timestamp)"
     ).eq("teacher_id", teacher_id).order("subject_id", desc=True).execute()
@@ -157,6 +191,9 @@ def get_teacher_subjects(teacher_id: int) -> List[Dict[str, Any]]:
 
 def check_teacher_owns_subject(teacher_id: int, subject_id: int) -> bool:
     """Verify that a subject belongs to the specified teacher."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return False
     response = supabase.table("subjects").select("subject_id").eq("subject_id", subject_id).eq("teacher_id", teacher_id).execute()
     return bool(response.data and len(response.data) > 0)
 
@@ -164,6 +201,9 @@ def check_teacher_owns_subject(teacher_id: int, subject_id: int) -> bool:
 
 def enroll_student_to_subject(student_id: int, subject_id: int) -> List[Dict[str, Any]]:
     """Enroll a student in a subject."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     # Check if already enrolled to prevent duplicate key error
     existing = supabase.table("subject_students").select("subject_id").eq("subject_id", subject_id).eq("student_id", student_id).execute()
     if existing.data and len(existing.data) > 0:
@@ -175,11 +215,17 @@ def enroll_student_to_subject(student_id: int, subject_id: int) -> List[Dict[str
 
 def unenroll_student_to_subject(student_id: int, subject_id: int) -> List[Dict[str, Any]]:
     """Unenroll a student from a subject."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     response = supabase.table("subject_students").delete().eq("student_id", student_id).eq("subject_id", subject_id).execute()
     return response.data or []
 
 def get_student_subjects(student_id: int) -> List[Dict[str, Any]]:
     """Fetch all subjects a student is enrolled in."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     response = supabase.table("subject_students").select(
         "subject_id, student_id, subjects(subject_id, subject_code, name, section, teacher_id)"
     ).eq("student_id", student_id).execute()
@@ -190,6 +236,9 @@ def get_enrolled_students_for_subject(subject_id: int, include_embeddings: bool 
     Fetch all students enrolled in a specific subject.
     Optionally include biometric embeddings for attendance pipeline execution.
     """
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     student_cols = "student_id, name, face_embedding, voice_embedding" if include_embeddings else "student_id, name"
     response = supabase.table("subject_students").select(
         f"subject_id, student_id, students({student_cols})"
@@ -208,12 +257,18 @@ def check_attendance_session_exists(subject_id: int, timestamp: str) -> bool:
     """Check if attendance records for this subject and timestamp already exist in database."""
     if not subject_id or not timestamp:
         return False
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return False
     response = supabase.table("attendance_logs").select("id").eq("subject_id", subject_id).eq("timestamp", timestamp).limit(1).execute()
     return bool(response.data and len(response.data) > 0)
 
 def create_attendance(logs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Insert attendance log records with pre-write deduplication to guarantee at most one record per student."""
     if not logs:
+        return []
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
         return []
     seen = set()
     deduped = []
@@ -227,6 +282,9 @@ def create_attendance(logs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def get_student_attendance(student_id: int) -> List[Dict[str, Any]]:
     """Fetch attendance history for a student."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     response = supabase.table("attendance_logs").select(
         "id, timestamp, subject_id, student_id, is_present, subjects(subject_id, subject_code, name, section)"
     ).eq("student_id", student_id).order("timestamp", desc=True).execute()
@@ -234,6 +292,9 @@ def get_student_attendance(student_id: int) -> List[Dict[str, Any]]:
 
 def get_attendance_for_teacher(teacher_id: int) -> List[Dict[str, Any]]:
     """Fetch all attendance records across subjects taught by a teacher."""
+    if not supabase:
+        logger.warning("Supabase client is not initialized.")
+        return []
     response = supabase.table("attendance_logs").select(
         "id, timestamp, subject_id, student_id, is_present, subjects!inner(subject_id, subject_code, name, section, teacher_id), students(student_id, name)"
     ).eq("subjects.teacher_id", teacher_id).order("timestamp", desc=True).execute()

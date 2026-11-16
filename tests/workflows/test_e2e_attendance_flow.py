@@ -159,10 +159,15 @@ class TestEndToEndAttendanceFlow:
 
         with patch("src.services.attendance_service.check_teacher_owns_subject") as mock_owns, \
              patch("src.services.attendance_service.check_attendance_session_exists") as mock_exists, \
+             patch("src.services.attendance_service.get_enrolled_students_for_subject") as mock_enrolled, \
              patch("src.services.attendance_service.db_create_attendance") as mock_save:
 
             mock_owns.return_value = True
             mock_exists.return_value = False
+            mock_enrolled.return_value = [
+                {"student_id": 1, "name": "Student Alpha"},
+                {"student_id": 2, "name": "Student Beta"}
+            ]
             mock_save.return_value = [
                 {"id": 1001, "student_id": 1, "subject_id": 501, "is_present": True},
                 {"id": 1002, "student_id": 2, "subject_id": 501, "is_present": True}

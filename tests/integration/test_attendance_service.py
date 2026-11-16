@@ -12,10 +12,12 @@ from src.services.attendance_service import (
 class TestAttendanceService:
     @patch("src.services.attendance_service.check_attendance_session_exists")
     @patch("src.services.attendance_service.check_teacher_owns_subject")
+    @patch("src.services.attendance_service.get_enrolled_students_for_subject")
     @patch("src.services.attendance_service.db_create_attendance")
-    def test_idempotent_confirmation(self, mock_create, mock_owns, mock_exists):
+    def test_idempotent_confirmation(self, mock_create, mock_enrolled, mock_owns, mock_exists):
         mock_exists.return_value = False
         mock_owns.return_value = True
+        mock_enrolled.return_value = [{"student_id": 10, "name": "Student A"}]
         mock_create.return_value = [{"id": 1, "student_id": 10, "is_present": True}]
 
         session_id = "test_sess_unique_123"
@@ -142,10 +144,12 @@ class TestAttendanceService:
 
     @patch("src.services.attendance_service.check_attendance_session_exists")
     @patch("src.services.attendance_service.check_teacher_owns_subject")
+    @patch("src.services.attendance_service.get_enrolled_students_for_subject")
     @patch("src.services.attendance_service.db_create_attendance")
-    def test_db_unique_constraint_violation_handled_gracefully(self, mock_create, mock_owns, mock_exists):
+    def test_db_unique_constraint_violation_handled_gracefully(self, mock_create, mock_enrolled, mock_owns, mock_exists):
         mock_exists.return_value = False
         mock_owns.return_value = True
+        mock_enrolled.return_value = [{"student_id": 10, "name": "Student A"}]
         # Simulate Postgres throwing error 23505 (unique_violation)
         mock_create.side_effect = Exception("duplicate key value violates unique constraint 'uq_session_student' (SQLSTATE 23505)")
 
